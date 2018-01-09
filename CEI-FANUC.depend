@@ -1,0 +1,9 @@
+# depslib dependency file v1.0
+1515518394 source:c:\users\94000187\documents\cei-fanuc\main.c
+	"header.h"
+
+1515517502 c:\users\94000187\documents\cei-fanuc\header.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+
