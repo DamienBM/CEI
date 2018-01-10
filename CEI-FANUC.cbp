@@ -40,9 +40,6 @@
 			<Add option="-std=c++1z" />
 		</Compiler>
 		<Unit filename="header.h" />
-		<Unit filename="main.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Extensions>
 			<code_completion />
 			<envvars />

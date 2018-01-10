@@ -7,6 +7,7 @@ int main()
     char* ptr_comma;
     int compteur=0;
     double* tab_val = NULL;
+    char test[] = "ServoSpeed_0_path1_";
 
     fichier = fopen("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\part_of_mtlinki_Signal_History.txt", "r");
 
@@ -21,11 +22,20 @@ int main()
         while(ptr_comma != NULL){
             printf("%s\n",ptr_comma);
 
-            if(!strcmp(ptr_comma,"signalname")){
+            if(!strcmp(ptr_comma,"L1Name")){
+                ptr_comma = strtok(NULL,"{}$,:\"");
+                char* name = NULL;
+                name = malloc(strlen(ptr_comma)*sizeof(char));
+                strcpy(name,ptr_comma);
+                //printf("The name is : %s\n",name);
+
+            }
+
+            if(!strcmp(ptr_comma,test)){
                 printf("Coucou !\n");
                 free(tab_val);
                 tab_val = malloc((++compteur)*sizeof(double));
-                printf("%d\n",compteur);
+                //printf("%d\n",compteur);
             }
 
             ptr_comma = strtok(NULL,"{}$,:\"");
