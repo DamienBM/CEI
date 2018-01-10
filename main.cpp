@@ -2,52 +2,66 @@
 
 int main()
 {
-    FILE* fichier = NULL;
-    char chaine[TAILLE_MAX_LIGNE] = "";
-    char* ptr_comma;
-    int compteur=0;
-    double* tab_val = NULL;
-    char test[] = "ServoSpeed_0_path1_";
+    std::ifstream fichier;
+    std::string chaine;
+    std::vector<double> tab_val;
+    std::vector<std::string> name;
+    std::string test("McnPos_1_path1_");
 
-    fichier = fopen("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\part_of_mtlinki_Signal_History.txt", "r");
+    fichier.open("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\part_of_mtlinki_Signal_History.txt", std::ios::in);
 
-    if (fichier != NULL)
+    if (fichier.is_open())
     {
-        printf("Fichier ouvert !\n");
-        fgets(chaine,TAILLE_MAX_LIGNE,fichier);
-        //printf("%s",chaine);
+        //std::cout << "Fichier ouvert !" << std::endl;
+        while(std::getline(fichier,chaine)){
+            //std::cout << chaine << std::endl;
 
-        ptr_comma = strtok(chaine,"{}$,:\"");
+            char *ptr = strtok((char*)chaine.c_str(),"{}$,:\""); //sale mais fonctionne ...
 
-        while(ptr_comma != NULL){
-            printf("%s\n",ptr_comma);
+            while(ptr != NULL){
+                //std::cout << ptr << std::endl;
+                //printf("%s\n",ptr);
 
-            if(!strcmp(ptr_comma,"L1Name")){
-                ptr_comma = strtok(NULL,"{}$,:\"");
-                char* name = NULL;
-                name = malloc(strlen(ptr_comma)*sizeof(char));
-                strcpy(name,ptr_comma);
-                //printf("The name is : %s\n",name);
+                if(!strcmp(ptr,"L1Name")){
+                    ptr = strtok(NULL,"{}$,:\"");
+                    //std::cout << ptr << std::endl;
+                    test += ptr;
+                    name.push_back(test);
+                    //std::cout << "Nom complet signal : " << name[0] << std::endl;
+                }
 
+                if(!strcmp(ptr,"value")){
+                    //std::cout << "Coucou !" << std::endl;
+                    ptr = strtok(NULL,"{}$,:\"");
+                    //std::cout << ptr << std::endl;
+                    double val_atof = std::atof(ptr);
+                    tab_val.push_back(val_atof);
+                    //std::cout << "Valeur : " << tab_val[0] << std::endl;
+                }
+
+                ptr = strtok(NULL,"{}$,:\"");
             }
-
-            if(!strcmp(ptr_comma,test)){
-                printf("Coucou !\n");
-                free(tab_val);
-                tab_val = malloc((++compteur)*sizeof(double));
-                //printf("%d\n",compteur);
-            }
-
-            ptr_comma = strtok(NULL,"{}$,:\"");
         }
 
-        fclose(fichier); // On ferme le fichier qui a été ouvert
+        fichier.close(); // On ferme le fichier qui a été ouvert
     }
 
     else
     {
         // On affiche un message d'erreur si on veut
-        printf("Impossible d'ouvrir le fichier : part_of_mtlinki_Signal_History.txt");
+        //printf("Impossible d'ouvrir le fichier : part_of_mtlinki_Signal_History.txt");
+        std::cout << "Impossible d'ouvrir le fichier : part_of_mtlinki_Signal_History.txt" << std::endl;
+    }
+
+    remove("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\test.txt");
+
+    std::ofstream fichier_out("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\test.txt", std::ios::out);
+
+    if(fichier_out){
+        for(auto& ptr_val : tab_val)
+            fichier_out /*<< "Valeur : "*/ << ptr_val << std::endl;
+        //fichier_out << "Nb :" << tab_val.size() << std::endl;
+        fichier_out.close();
     }
 
     return 0;
