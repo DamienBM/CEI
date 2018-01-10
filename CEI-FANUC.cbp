@@ -15,10 +15,10 @@
 					<Add option="-march=corei7" />
 					<Add option="-std=c++1z" />
 					<Add option="-std=c11" />
-					<Add option="-g" />
 				</Compiler>
 				<Linker>
 					<Add option="-O3" />
+					<Add option="-s" />
 				</Linker>
 			</Target>
 			<Target title="Release">

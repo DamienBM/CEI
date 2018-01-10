@@ -10,6 +10,9 @@ int main()
 
     fichier.open("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\part_of_mtlinki_Signal_History.txt", std::ios::in);
 
+    //TODO : -récupérer le L1Name uniquement pour les signaux voulus
+    //       -après ça, continuer de parser jusqu'à la valeur du signal
+
     if (fichier.is_open())
     {
         //std::cout << "Fichier ouvert !" << std::endl;
