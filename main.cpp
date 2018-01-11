@@ -1,10 +1,10 @@
 #include "header.h"
 
 /**********************/
-//
+
 //Programme réussi à récupérer toutes les valeurs d'un signal
 //que l'on demande par l'instanciation de test (std::string).
-//
+
 //On récupère toutes les valeurs du signal nommé paretiellement par test
 //afin de tracer ensuite sous Excel (par exemple et dans un premier temps) les données
 
@@ -27,8 +27,8 @@ int main()
 
     fichier.open("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\mtlinki_Signal_History.txt", std::ios::in);
 
-    //TODO : -récupérer le L1Name uniquement pour les signaux voulus
-    //       -après ça, continuer de parser jusqu'à la valeur du signal
+    //TODO : - récupérer le L1Name uniquement pour les signaux voulus
+    //       - après ça, continuer de parser jusqu'à la valeur du signal
 
     if (fichier.is_open())
     {
