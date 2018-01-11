@@ -1,5 +1,21 @@
 #include "header.h"
 
+/**********************/
+//
+//Programme réussi à récupérer toutes les valeurs d'un signal
+//que l'on demande par l'instanciation de test (std::string).
+//
+//On récupère toutes les valeurs du signal nommé paretiellement par test
+//afin de tracer ensuite sous Excel (par exemple et dans un premier temps) les données
+
+//première remarque => le signal McnPos de l'axe Y (celui où le soufflet déconne)
+//est sous-échantilloné dans la base. Pourtant paramètre d'acquisition à 500msec.
+
+//Pb possible : trop de signaux à récupérer pour MongoDB => ralentissement du processus de transfert des signaux
+//Solution : Enlever les signaux inutiles à notre analyse.
+
+/**********************/
+
 int main()
 {
     std::ifstream fichier;
@@ -26,41 +42,50 @@ int main()
                 //std::cout << ptr << std::endl;
 
                 if(dejavu==0){
-                    std::cout << "Avant le while :" << ptr << std::endl;
+                    //std::cout << "Avant le while :" << ptr << std::endl;
                     while(strcmp(ptr,"L1Name")!=0){
                         ptr = strtok(NULL,"{}$,:\"");
-                        std::cout << "Recherche L1Name" << std::endl;
+                        //std::cout << "Recherche L1Name" << std::endl;
                     }
                     dejavu=1;
                     ptr = strtok(NULL,"{}$,:\"");
                     //std::cout << ptr << std::endl;
                     test += ptr;
                     name.push_back(test);
-                    std::cout << "Nom complet signal : " << name.back() << std::endl;
+                    //std::cout << "Nom complet signal : " << name.back() << std::endl;
                 }
 
-                std::cout << ptr << std::endl;
+                //std::cout << ptr << std::endl;
 
                 while(strcmp(ptr,"signalname")!=0){
                     ptr = strtok(NULL,"{}$,:\"");
-                    std::cout << "Recherche" << ptr << std::endl;
+                    //std::cout << "Recherche" << ptr << std::endl;
                 }
 
-                while(strcmp(ptr,"value")!=0){
+                //std::cout << "Name[0] = " << name[0].c_str() << std::endl;
+
+                //Ici on a ptr qui vaut le nom du signal.
+                ptr = strtok(NULL,"{}$,:\"");
+
+                if(strcmp(ptr,name[0].c_str()) == 0){
+
+                    while(strcmp(ptr,"value")!=0){
+                        ptr = strtok(NULL,"{}$,:\"");
+                        //std::cout << ptr << std::endl;
+                    }
+
+
                     ptr = strtok(NULL,"{}$,:\"");
-                    std::cout << ptr << std::endl;
+                    //std::cout << ptr << std::endl;
+
+                    //std::cout << ptr << std::endl;
+                    double val_atof = std::atof(ptr);
+                    tab_val.push_back(val_atof);
+                    //std::cout << "Valeur : " << tab_val[0] << std::endl;
                 }
+                    while(ptr != NULL)
+                        ptr = strtok(NULL,"{}$,:\"");
 
-                std::cout << ptr << std::endl;
-                ptr = strtok(NULL,"{}$,:\"");
-
-                //std::cout << ptr << std::endl;
-                double val_atof = std::atof(ptr);
-                tab_val.push_back(val_atof);
-                //std::cout << "Valeur : " << tab_val[0] << std::endl;
-
-
-                ptr = strtok(NULL,"{}$,:\"");
             }
 
         }
