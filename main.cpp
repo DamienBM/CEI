@@ -7,15 +7,16 @@ int main()
     std::vector<double> tab_val;
     std::vector<std::string> name;
     std::string test("McnPos_1_path1_");
+    int dejavu = 0;
 
-    fichier.open("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\part_of_mtlinki_Signal_History.txt", std::ios::in);
+    fichier.open("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\mtlinki_Signal_History.txt", std::ios::in);
 
     //TODO : -récupérer le L1Name uniquement pour les signaux voulus
     //       -après ça, continuer de parser jusqu'à la valeur du signal
 
     if (fichier.is_open())
     {
-        //std::cout << "Fichier ouvert !" << std::endl;
+        std::cout << "Fichier ouvert !" << std::endl;
         while(std::getline(fichier,chaine)){
             //std::cout << chaine << std::endl;
 
@@ -23,36 +24,52 @@ int main()
 
             while(ptr != NULL){
                 //std::cout << ptr << std::endl;
-                //printf("%s\n",ptr);
 
-                if(!strcmp(ptr,"L1Name")){
+                if(dejavu==0){
+                    std::cout << "Avant le while :" << ptr << std::endl;
+                    while(strcmp(ptr,"L1Name")!=0){
+                        ptr = strtok(NULL,"{}$,:\"");
+                        std::cout << "Recherche L1Name" << std::endl;
+                    }
+                    dejavu=1;
                     ptr = strtok(NULL,"{}$,:\"");
                     //std::cout << ptr << std::endl;
                     test += ptr;
                     name.push_back(test);
-                    //std::cout << "Nom complet signal : " << name[0] << std::endl;
+                    std::cout << "Nom complet signal : " << name.back() << std::endl;
                 }
 
-                if(!strcmp(ptr,"value")){
-                    //std::cout << "Coucou !" << std::endl;
+                std::cout << ptr << std::endl;
+
+                while(strcmp(ptr,"signalname")!=0){
                     ptr = strtok(NULL,"{}$,:\"");
-                    //std::cout << ptr << std::endl;
-                    double val_atof = std::atof(ptr);
-                    tab_val.push_back(val_atof);
-                    //std::cout << "Valeur : " << tab_val[0] << std::endl;
+                    std::cout << "Recherche" << ptr << std::endl;
                 }
+
+                while(strcmp(ptr,"value")!=0){
+                    ptr = strtok(NULL,"{}$,:\"");
+                    std::cout << ptr << std::endl;
+                }
+
+                std::cout << ptr << std::endl;
+                ptr = strtok(NULL,"{}$,:\"");
+
+                //std::cout << ptr << std::endl;
+                double val_atof = std::atof(ptr);
+                tab_val.push_back(val_atof);
+                //std::cout << "Valeur : " << tab_val[0] << std::endl;
+
 
                 ptr = strtok(NULL,"{}$,:\"");
             }
-        }
 
+        }
         fichier.close(); // On ferme le fichier qui a été ouvert
     }
 
     else
     {
         // On affiche un message d'erreur si on veut
-        //printf("Impossible d'ouvrir le fichier : part_of_mtlinki_Signal_History.txt");
         std::cout << "Impossible d'ouvrir le fichier : part_of_mtlinki_Signal_History.txt" << std::endl;
     }
 
