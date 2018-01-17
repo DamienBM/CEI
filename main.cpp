@@ -22,7 +22,8 @@ int main()
     std::string chaine;
     std::vector<double> tab_val;
     std::vector<std::string> name;
-    std::string test("McnPos_1_path1_");
+    //std::string sig_name("McnPos_1_path1_");
+    std::string sig_name("SpindleLoad_0_path1_");
     int dejavu = 0;
 
     fichier.open("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\mtlinki_Signal_History.txt", std::ios::in);
@@ -50,8 +51,8 @@ int main()
                     dejavu=1;
                     ptr = strtok(NULL,"{}$,:\"");
                     //std::cout << ptr << std::endl;
-                    test += ptr;
-                    name.push_back(test);
+                    sig_name += ptr;
+                    name.push_back(sig_name);
                     //std::cout << "Nom complet signal : " << name.back() << std::endl;
                 }
 
@@ -98,9 +99,10 @@ int main()
         std::cout << "Impossible d'ouvrir le fichier : part_of_mtlinki_Signal_History.txt" << std::endl;
     }
 
-    remove("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\test.txt");
+    std::string path_out("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\out_");
+    path_out+=(sig_name+".txt");
 
-    std::ofstream fichier_out("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\test.txt", std::ios::out);
+    std::ofstream fichier_out(path_out, std::ios::out|std::ios::trunc);
 
     if(fichier_out){
         for(auto& ptr_val : tab_val)
@@ -109,5 +111,7 @@ int main()
         fichier_out.close();
     }
 
+
+    std::cout << "Tout est okay !" << std::endl;
     return 0;
 }
