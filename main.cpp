@@ -1,117 +1,205 @@
 #include "header.h"
 
-/**********************/
 
-//Programme réussi à récupérer toutes les valeurs d'un signal
-//que l'on demande par l'instanciation de test (std::string).
+/**********************
 
-//On récupère toutes les valeurs du signal nommé paretiellement par test
-//afin de tracer ensuite sous Excel (par exemple et dans un premier temps) les données
+V1 : Programme réussi à récupérer toutes les valeurs d'un signal
+que l'on demande par l'instanciation de test (std::string).
 
-//première remarque => le signal McnPos de l'axe Y (celui où le soufflet déconne)
-//est sous-échantilloné dans la base. Pourtant paramètre d'acquisition à 500msec.
+V2 : On récupère toutes les valeurs du signal nommé partiellement par test
+afin de tracer ensuite sous Excel les données.
 
-//Pb possible : trop de signaux à récupérer pour MongoDB => ralentissement du processus de transfert des signaux
-//Solution : Enlever les signaux inutiles à notre analyse.
+V3 : Fonctionne sur pc distant en "copie/coll"-ant le .exe du projet vers le pc distant
 
-/**********************/
+V4 : Récupère les données et les met dans une structure de type info_sig
+et sort les signaux en fichier txt et supprime les fichiers de 0Ko
 
-int main()
+**********************/
+
+int main(int argc, char** argv)
 {
+    std::string cur_dir = _getcwd(NULL,0);
+    std::string file_in = cur_dir + "\\DB\\mtlinki_Signal.txt";
     std::ifstream fichier;
     std::string chaine;
-    std::vector<double> tab_val;
-    std::vector<std::string> name;
-    //std::string sig_name("McnPos_1_path1_");
-    std::string sig_name("SpindleLoad_0_path1_");
-    int dejavu = 0;
 
-    fichier.open("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\mtlinki_Signal_History.txt", std::ios::in);
+    allConf db;
+    double timespan_msec = 0;
 
-    //TODO : - récupérer le L1Name uniquement pour les signaux voulus
-    //       - après ça, continuer de parser jusqu'à la valeur du signal
+    //std::cout << argv[0] <<std::endl; //endroit ou le .exe se situe
+
+    db = create_DB();
+    PAUSE
+
+    fichier.open(file_in, std::ios::in);
 
     if (fichier.is_open())
     {
         std::cout << "Fichier ouvert !" << std::endl;
         while(std::getline(fichier,chaine)){
-            //std::cout << chaine << std::endl;
 
-            char *ptr = strtok((char*)chaine.c_str(),"{}$,:\""); //sale mais fonctionne ...
+            char *ptr = strtok((char*)chaine.c_str(),"{}$,:\"");
 
             while(ptr != NULL){
-                //std::cout << ptr << std::endl;
 
-                if(dejavu==0){
-                    //std::cout << "Avant le while :" << ptr << std::endl;
-                    while(strcmp(ptr,"L1Name")!=0){
-                        ptr = strtok(NULL,"{}$,:\"");
-                        //std::cout << "Recherche L1Name" << std::endl;
-                    }
-                    dejavu=1;
+                while(strcmp(ptr,"timespan")!=0){
                     ptr = strtok(NULL,"{}$,:\"");
-                    //std::cout << ptr << std::endl;
-                    sig_name += ptr;
-                    name.push_back(sig_name);
-                    //std::cout << "Nom complet signal : " << name.back() << std::endl;
                 }
+                timespan_msec = std::atof(strtok(NULL,"{}$,:\""))*MSEC;
 
-                //std::cout << ptr << std::endl;
 
                 while(strcmp(ptr,"signalname")!=0){
                     ptr = strtok(NULL,"{}$,:\"");
-                    //std::cout << "Recherche" << ptr << std::endl;
                 }
 
-                //std::cout << "Name[0] = " << name[0].c_str() << std::endl;
-
-                //Ici on a ptr qui vaut le nom du signal.
                 ptr = strtok(NULL,"{}$,:\"");
+                //ici ptr vaut le nom du signal dans L1Signal_Pool
 
-                if(strcmp(ptr,name[0].c_str()) == 0){
-
-                    while(strcmp(ptr,"value")!=0){
+                for(auto it = db.begin(); it != db.end();++it){
+                    if(strcmp(ptr,it->signalName.c_str())==0){
+                        //std::cout << "Match !" << std::endl;
                         ptr = strtok(NULL,"{}$,:\"");
-                        //std::cout << ptr << std::endl;
+                        ptr = strtok(NULL,"{}$,:\"");
+                        //ici ptr vaut la valeur du signal
+                        for(int nb_pts = 0; nb_pts < (timespan_msec/(it->readCycle));++nb_pts){
+                            it->values.push_back(std::atof(ptr));
+                            //std::cout << "Valeur : " << std::atof(ptr) << ", signal : " << it->signalName << std::endl;
+                            //PAUSE
+                        }
+                        break;
                     }
-
-
-                    ptr = strtok(NULL,"{}$,:\"");
-                    //std::cout << ptr << std::endl;
-
-                    //std::cout << ptr << std::endl;
-                    double val_atof = std::atof(ptr);
-                    tab_val.push_back(val_atof);
-                    //std::cout << "Valeur : " << tab_val[0] << std::endl;
                 }
-                    while(ptr != NULL)
-                        ptr = strtok(NULL,"{}$,:\"");
 
+                while(ptr != NULL)
+                    ptr = strtok(NULL,"{}$,:\"");
             }
-
         }
-        fichier.close(); // On ferme le fichier qui a été ouvert
-    }
+        fichier.close(); // On ferme le fichier
 
-    else
-    {
-        // On affiche un message d'erreur si on veut
-        std::cout << "Impossible d'ouvrir le fichier : part_of_mtlinki_Signal_History.txt" << std::endl;
-    }
+        std::string path_out = cur_dir+"\\out\\";
+        std::string file_out;
 
-    std::string path_out("C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\fichier_txt_db\\out_");
-    path_out+=(sig_name+".txt");
+        for(unsigned int i = 0; i != db.size();++i){
 
-    std::ofstream fichier_out(path_out, std::ios::out|std::ios::trunc);
+            file_out = path_out + db[i].signalName +".txt";
+            std::ofstream fichier_out(file_out, std::ios::out|std::ios::trunc);
 
-    if(fichier_out){
-        for(auto& ptr_val : tab_val)
-            fichier_out /*<< "Valeur : "*/ << ptr_val << std::endl;
-        //fichier_out << "Nb :" << tab_val.size() << std::endl;
-        fichier_out.close();
-    }
+            if(fichier_out){
+                for(unsigned int j = 0; j != db[i].values.size(); ++j)
+                    fichier_out << db[i].values[j] << std::endl;
+                fichier_out.close();
+            }else{
+                std::cout << "Pb lors de l'ecriture des fichiers out !" << std::endl;
+                PAUSE
+                exit(EXIT_FAILURE);
+            }
+        }
+    }else
+        std::cout << "Impossible d'ouvrir le fichier : mtlinki_Signal.txt" << std::endl;
+    PAUSE
+    std::string del_cmd = "for /r " + cur_dir + "\\out %i in (*.txt) do if %~zi == 0 del %i";
+    system(del_cmd.c_str());
 
-
-    std::cout << "Tout est okay !" << std::endl;
+    std::cout << "Done !" << std::endl;
+    PAUSE
     return 0;
+}
+
+allConf create_DB(void){
+    allConf db;
+    //system("chemin_fichier_batch"); pour lancer les *.bat
+
+    std::string cur_dir = _getcwd(NULL,0);
+
+    /** get le current directory **/
+    std::string tmp_mkdir("");
+    tmp_mkdir = "mkdir " + cur_dir + "\\DB";
+
+    /** Créer le repertoire pour stocker la BDD **/
+    if( system(tmp_mkdir.c_str()) ){
+        std::string tmp_rmdir("");
+        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\DB";
+        system(tmp_rmdir.c_str());
+        system(tmp_mkdir.c_str());
+    }
+
+
+    tmp_mkdir = "mkdir " + cur_dir + "\\batch";
+    /** Créer le repertoire pour les fichiers bat **/
+    if( system(tmp_mkdir.c_str()) ){
+        std::string tmp_rmdir("");
+        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\batch";
+        system(tmp_rmdir.c_str());
+        system(tmp_mkdir.c_str());
+    }
+
+    tmp_mkdir = "mkdir " + cur_dir + "\\out";
+    /** Créer le repertoire pour les fichiers out **/
+    if( system(tmp_mkdir.c_str()) ){
+        std::string tmp_rmdir("");
+        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\out";
+        system(tmp_rmdir.c_str());
+        system(tmp_mkdir.c_str());
+    }
+
+    /** Construction requete MongoDB **/
+    std::string path = cur_dir + "\\batch\\Signal.bat";
+    std::ofstream fichier(path, std::ios::out|std::ios::trunc);
+    if(fichier){
+        fichier << "path C:\\FANUC\\MT-LINKi\\MongoDB\\bin" << std::endl << "mongoexport /d MTLINKi /u fanuc /p fanuc /c L1Signal_Pool /o "<< cur_dir << "\\DB\\mtlinki_Signal.txt" <<std::endl;
+        fichier.close();
+    }else
+        std::cout << "Oops !" << std::endl;
+
+    /** Lancement de la requête **/
+    system(path.c_str());
+
+    /** Récupération des infos dans L0Setting **/
+    std::ifstream L0_Setting("C:\\FANUC\\MT-LINKi\\MT-LINKiCollector\\Setting\\L0_Setting.json",std::ios::in);
+    std::string chaine;
+
+    if(L0_Setting){
+        std::cout << "Fichier ouvert !" << std::endl;
+        struct info_sig dummy;
+        std::string sig_name;
+        while(std::getline(L0_Setting,chaine)){
+            char *ptr = strtok((char*)chaine.c_str(),"{}$,:\"");
+
+            while(ptr != NULL){
+                if(strcmp(ptr,"L0Name") == 0){
+                    ptr = strtok(NULL,"{}$,:\"");
+                    //ptr vaut le nom de L0Name
+                    dummy.L0Name = ptr;
+                }
+
+                else if(strcmp(ptr,"SignalName") == 0){
+                    ptr = strtok(NULL,"{}$,:\"");
+                    //ptr vaut le nom du signal
+                    dummy.signalName = ptr;
+                    dummy.signalName+="_"+dummy.L0Name;
+
+                }
+
+                else if(strcmp(ptr,"ReadCycle") == 0) {
+                    ptr = strtok(NULL,"{}$,:\"");
+                    //ptr vaut le temps d'échantillonage
+                    dummy.readCycle = atoi(ptr);
+                    db.push_back(dummy);
+                }
+
+                ptr = strtok(NULL,"{}$,:\"");
+            }
+        }
+    }else{
+        std::cerr << "Probleme lors de l'ouverture de L0_Setting" << std::endl;
+        PAUSE
+        exit(EXIT_FAILURE);
+    }
+
+    /**test for loop : okay !**/
+    int i=0;
+    for(auto it = db.begin(); it != db.end(); ++it,i++)
+        std::cout << "Name " << i << " : "<<it->signalName << " avec Te = " << it->readCycle << std::endl;
+
+    return db;
 }

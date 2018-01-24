@@ -2,7 +2,7 @@
 1515592207 source:c:\users\94000187\documents\cei-fanuc\main.c
 	"header.h"
 
-1515619846 c:\users\94000187\documents\cei-fanuc\header.h
+1516819017 c:\users\94000187\documents\cei-fanuc\header.h
 	<string>
 	<vector>
 	<iostream>
@@ -11,7 +11,9 @@
 	<cstring>
 	<cstdlib>
 	<stdio.h>
+	<stdlib.h>
+	<direct.h>
 
-1515701835 source:c:\users\94000187\documents\cei-fanuc\main.cpp
+1516825399 source:c:\users\94000187\documents\cei-fanuc\main.cpp
 	"header.h"
 
