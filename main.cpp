@@ -18,6 +18,9 @@ et sort les signaux en fichier txt et supprime les fichiers de 0Ko
 
 int main(int argc, char** argv)
 {
+    float temps;
+    clock_t t1, t2;
+    t1 = clock();
     std::string cur_dir = _getcwd(NULL,0);
     std::string file_in = cur_dir + "\\DB\\mtlinki_Signal.txt";
     std::ifstream fichier;
@@ -29,13 +32,12 @@ int main(int argc, char** argv)
     //std::cout << argv[0] <<std::endl; //endroit ou le .exe se situe
 
     db = create_DB();
-    PAUSE
 
     fichier.open(file_in, std::ios::in);
 
     if (fichier.is_open())
     {
-        std::cout << "Fichier ouvert !" << std::endl;
+        //std::cout << "Fichier ouvert !" << std::endl;
         while(std::getline(fichier,chaine)){
 
             char *ptr = strtok((char*)chaine.c_str(),"{}$,:\"");
@@ -96,11 +98,20 @@ int main(int argc, char** argv)
         }
     }else
         std::cout << "Impossible d'ouvrir le fichier : mtlinki_Signal.txt" << std::endl;
-    PAUSE
+
+    /** Suppresion des fichiers de 0Ko **/
     std::string del_cmd = "for /r " + cur_dir + "\\out %i in (*.txt) do if %~zi == 0 del %i";
     system(del_cmd.c_str());
 
-    std::cout << "Done !" << std::endl;
+    /** Suppression du dossier db (éviter de fuiter l'accès aux données) **/
+    std::string tmp_rmdir = "rmdir /s /q " + cur_dir + "\\db";
+    system(tmp_rmdir.c_str());
+
+    //std::cout << "Done !" << std::endl;
+
+    t2 = clock();
+    temps = (float)(t2-t1)/CLOCKS_PER_SEC;
+    std::cout << "Temps d'execution : " << temps << std::endl;
     PAUSE
     return 0;
 }
@@ -118,7 +129,7 @@ allConf create_DB(void){
     /** Créer le repertoire pour stocker la BDD **/
     if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
-        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\DB";
+        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\db";
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
     }
@@ -146,7 +157,7 @@ allConf create_DB(void){
     std::string path = cur_dir + "\\batch\\Signal.bat";
     std::ofstream fichier(path, std::ios::out|std::ios::trunc);
     if(fichier){
-        fichier << "path C:\\FANUC\\MT-LINKi\\MongoDB\\bin" << std::endl << "mongoexport /d MTLINKi /u fanuc /p fanuc /c L1Signal_Pool /o "<< cur_dir << "\\DB\\mtlinki_Signal.txt" <<std::endl;
+        fichier << "path C:\\FANUC\\MT-LINKi\\MongoDB\\bin" << std::endl << "mongoexport /d MTLINKi /u fanuc /p fanuc /c L1Signal_Pool /o "<< cur_dir << "\\db\\mtlinki_Signal.txt" <<std::endl;
         fichier.close();
     }else
         std::cout << "Oops !" << std::endl;
@@ -154,12 +165,17 @@ allConf create_DB(void){
     /** Lancement de la requête **/
     system(path.c_str());
 
+    /** Suppression du dossier batch (éviter de fuiter l'accès aux données) **/
+    std::string tmp_rmdir("");
+    tmp_rmdir = "rmdir /s /q " + cur_dir + "\\batch";
+    system(tmp_rmdir.c_str());
+
     /** Récupération des infos dans L0Setting **/
     std::ifstream L0_Setting("C:\\FANUC\\MT-LINKi\\MT-LINKiCollector\\Setting\\L0_Setting.json",std::ios::in);
     std::string chaine;
 
     if(L0_Setting){
-        std::cout << "Fichier ouvert !" << std::endl;
+        //std::cout << "Fichier ouvert !" << std::endl;
         struct info_sig dummy;
         std::string sig_name;
         while(std::getline(L0_Setting,chaine)){
@@ -197,9 +213,9 @@ allConf create_DB(void){
     }
 
     /**test for loop : okay !**/
-    int i=0;
+    /*int i=0;
     for(auto it = db.begin(); it != db.end(); ++it,i++)
-        std::cout << "Name " << i << " : "<<it->signalName << " avec Te = " << it->readCycle << std::endl;
+        std::cout << "Name " << i << " : "<<it->signalName << " avec Te = " << it->readCycle << std::endl;*/
 
     return db;
 }

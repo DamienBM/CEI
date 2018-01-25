@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <direct.h>
+#include <time.h>
 
 #define MSEC 1000
 #define PAUSE system("pause");
