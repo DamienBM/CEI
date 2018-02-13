@@ -14,11 +14,14 @@ V3 : Fonctionne sur pc distant en "copie/coll"-ant le .exe du projet vers le pc 
 V4 : Récupère les données et les met dans une structure de type info_sig
 et sort les signaux en fichier txt et supprime les fichiers de 0Ko
 
+V5 : amélioration avec des thread & future lors de l'écriture des fichiers dans /out/...
+     Les threads retourne une valeur (int) et on attends que les thread
+
 **********************/
 
 int main(int argc, char** argv)
 {
-    float temps;
+    float temps_read_db,temps_write_out,temps_write_db,temps_all;
     clock_t t1, t2;
     t1 = clock();
     std::string cur_dir = _getcwd(NULL,0);
@@ -29,9 +32,13 @@ int main(int argc, char** argv)
     allConf db;
     double timespan_msec = 0;
 
-    //std::cout << argv[0] <<std::endl; //endroit ou le .exe se situe
-
     db = create_DB();
+    t2 = clock();
+    temps_read_db = (float)(t2-t1)/CLOCKS_PER_SEC;
+    std::cout << "Temps lecture base de donnees : " << temps_read_db << std::endl;
+    t1 = clock();
+
+    PAUSE
 
     fichier.open(file_in, std::ios::in);
 
@@ -78,10 +85,16 @@ int main(int argc, char** argv)
         }
         fichier.close(); // On ferme le fichier
 
-        std::string path_out = cur_dir+"\\out\\";
-        std::string file_out;
+        t2 = clock();
+        temps_write_db = (float)(t2-t1)/CLOCKS_PER_SEC;
+        std::cout << "Temps ecriture base de donnees fichier txt : " << temps_write_db << std::endl;
 
-        for(unsigned int i = 0; i != db.size();++i){
+        /*std::string path_out = cur_dir+"\\out\\";
+        std::string file_out;*/
+
+        t1 = clock();
+
+        /*for(unsigned int i = 0; i != db.size();++i){
 
             file_out = path_out + db[i].signalName +".txt";
             std::ofstream fichier_out(file_out, std::ios::out|std::ios::trunc);
@@ -95,7 +108,14 @@ int main(int argc, char** argv)
                 PAUSE
                 exit(EXIT_FAILURE);
             }
-        }
+        }*/
+
+        ecriture_thread(db);
+
+        t2 = clock();
+        temps_write_out = (float)(t2-t1)/CLOCKS_PER_SEC;
+        std::cout << "Temps ecriture fichiers out : " << temps_write_out << std::endl;
+        t1=clock();
     }else
         std::cout << "Impossible d'ouvrir le fichier : mtlinki_Signal.txt" << std::endl;
 
@@ -110,10 +130,64 @@ int main(int argc, char** argv)
     //std::cout << "Done !" << std::endl;
 
     t2 = clock();
-    temps = (float)(t2-t1)/CLOCKS_PER_SEC;
-    std::cout << "Temps d'execution : " << temps << std::endl;
+    temps_all = ((float)(t2-t1)/CLOCKS_PER_SEC)+temps_read_db+temps_write_db+temps_write_out;
+    std::cout << "Temps d'execution : " << temps_all << std::endl;
     PAUSE
     return 0;
+}
+
+int ecriture(info_sig sig){
+
+    std::string cur_dir = _getcwd(NULL,0);
+    std::string path_out = cur_dir+"\\out\\";
+    std::string file_out;
+
+    file_out = path_out + sig.signalName + "_TimeCycle_" + std::to_string(sig.readCycle) + ".txt";
+    std::ofstream fichier_out(file_out, std::ios::out|std::ios::trunc);
+
+    if(fichier_out){
+        for(unsigned int j = 0; j != sig.values.size(); ++j)
+            fichier_out << sig.values[j] << std::endl;
+        fichier_out.close();
+    }else{
+        std::cout << "Pb lors de l'ecriture des fichiers out !" << std::endl;
+        PAUSE
+        exit(EXIT_FAILURE);
+    }
+    return 1;
+}
+
+void ecriture_thread(allConf db){
+
+
+    std::chrono::milliseconds span (10);
+    unsigned int n = std::thread::hardware_concurrency(); // 8 threads au max en même temps
+
+    std::vector<std::future<int>> tab_fut;
+    std::future<int> fut;
+    unsigned int j = 0;
+
+    for (j = 0; j<n && j<db.size();++j){
+        //init threads here
+        tab_fut.push_back(std::async(std::launch::async,ecriture,db[j]));
+    }
+
+    if(j==db.size()){
+        for(unsigned int k = 0; k<n; ++k)
+            tab_fut[k].wait();
+    }
+    else{
+        std::cout << "Ecriture fichier dans /out sur " << tab_fut.size() <<  " threads." << std::endl;
+        unsigned int i = j; //i = n ...
+        while (i < db.size()){
+            for (unsigned int j = 0; j<tab_fut.size(); ++j){
+                if(tab_fut[j].wait_for(span) == std::future_status::ready){
+                    tab_fut[j] = std::async(std::launch::async,ecriture,db[i]);
+                    i++;
+                }
+            }
+        }
+    }
 }
 
 allConf create_DB(void){

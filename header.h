@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <direct.h>
 #include <time.h>
+#include <thread>
+#include <future>
 
 #define MSEC 1000
 #define PAUSE system("pause");
@@ -25,3 +27,5 @@ struct info_sig {
 typedef std::vector<info_sig> allConf;
 
 allConf create_DB(void);
+void ecriture_thread(allConf);
+int ecriture(info_sig);
