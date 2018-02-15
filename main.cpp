@@ -33,7 +33,7 @@ int main(int argc, char** argv)
     allConf db;
     db = first_steps(); /** Do the first steps : DB => SPARSE DB => OUT DATA **/
 
-    prediction_steps(db);
+    make_predictor_steps(db);
 
     PAUSE
 
@@ -307,9 +307,7 @@ allConf first_steps(void){
     return db;
 }
 
-void fan_prediction(allConf& db){
-
-    std::cout << "Fan Pred !" << std::endl;
+allConf filtering_db(const allConf& db){
 
     /** SPARSE DB WITH ALL FAN SIGNALS **/
     std::string fan("Fan");
@@ -347,32 +345,14 @@ void fan_prediction(allConf& db){
         }
     }
 
-    /** NEXT STEP IS TO CALCULATE MEAN AND STANDARD DEVIATION FOR EACH SIGNAL **/
-    vectPred pred_fan;
+    return  db_fan;
 
-    for(unsigned int i=0; i<db_fan.size(); ++i){
+}
 
-        double sum = std::accumulate(std::begin(db_fan[i].values), std::end(db_fan[i].values), 0.0);
-        double mean =  sum / db_fan[i].values.size();
-
-        double accum = 0.0;
-        std::for_each (std::begin(db_fan[i].values), std::end(db_fan[i].values), [&](const double d) {
-            accum += (d - mean) * (d - mean);
-        });
-
-        double stdev = std::sqrt(accum / (db_fan[i].values.size()-1));
-
-        pred_fan.push_back(stat_pred(db_fan[i].signalName,mean,stdev));
-    }
-
-    /** UNTIL HERE CALCULATIONS ARE OKAY ! (VERIFIED WITH EXCEL : MEAN AND STD_DEV OKAY)**/
-    for(unsigned int i=0; i<pred_fan.size();++i)
-        std::cout << "For vector : " << pred_fan[i].sig_name << " mean is " << pred_fan[i].mean << std::endl
-        << "and std dev is " <<  pred_fan[i].std_dev << std::endl;
-
+void save_and_plot_predictors(const vectPred& pred_fan,const allConf& db_fan){
     /** SAVE THE PREDICTOR IN A TXT FILE  FROM VECTOR PRED_FAN**/
     std::string cur_dir = _getcwd(NULL,0);
-
+    using namespace std::chrono_literals;//enable to write 10ms or 1s
 
     /** Créer le repertoire pour les fichiers pred*.txt **/
     std::string tmp_mkdir("mkdir " + cur_dir + "\\pred");
@@ -387,7 +367,7 @@ void fan_prediction(allConf& db){
     std::ofstream fichier(filename, std::ios::out|std::ios::trunc);
 
     if(fichier){
-            fichier << "Signal Name" << "," << "Mean Value" << "," << "Standard deviation value" << "\n";
+            fichier << "Signal Name" << " , " << "Mean Value" << " , " << "Standard deviation value" << "\n";
         for(auto pred : pred_fan)
             fichier << pred.sig_name << "," << pred.mean << "," << pred.std_dev << "\n";
         fichier.close();
@@ -395,34 +375,60 @@ void fan_prediction(allConf& db){
         std::cout << "Something went wrong with prediction fan output txt file ..." << std::endl;
 
     /** PLOT WITH GNUPLOT DATA AND PREDICTION THRESHOLD FOR EACH SIGNAL **/
-    filename = cur_dir+"\\pred\\pred_fan_conf.plt";
-    std::ofstream gnu_file_conf(filename,std::ios::out|std::ios::trunc);
-    if(gnu_file_conf){
-        std::cout << std::endl << "Generate Gnuplot file." << std::endl;
-        gnu_file_conf << "plot \"C:\\\\Users\\\\94000187\\\\Desktop\\\\projet_en_cours\\\\CEI\\\\test_cpp\\\\pred\\\\pred_fan.plt\" using 1:2 title \"data\","
-                      <<"\"C:\\\\Users\\\\94000187\\\\Desktop\\\\projet_en_cours\\\\CEI\\\\test_cpp\\\\pred\\\\pred_fan.plt\" using 1:3 title \"thresh\"";
-        gnu_file_conf.close();
-    }else
-        std::cout << std::endl << "Something went wrong with gnuplot conf file ..." << std::endl;
+    for(unsigned int i=0; i<db_fan.size(); ++i){
+        filename = cur_dir+"\\pred\\pred_fan_"+db_fan[i].signalName+".plt";
+        std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
+        if(gnu_file){
+            gnu_file << "plot '-' using 1:2 title \"data\" lc rgb '#00ff00','' using 1:2 title \"thresh\" with lines lc rgb '#00ff00'" << "\n";
+            unsigned int cpt = 0;
+            double thresh = pred_fan[i].mean - 2*pred_fan[i].std_dev;
+            std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt](const double val) {
+                gnu_file << cpt++ << " " << val << "\n";
+            });
+            cpt=0;
+            gnu_file << "e" << "\n";
+            std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt,&thresh](const double val) {
+                gnu_file << cpt++ << " " << thresh << "\n";
+            });
+            gnu_file.close();
+        }else
+            std::cout << std::endl << "Something went wrong with gnuplot data file ..." << std::endl;
 
-    filename = cur_dir+"\\pred\\pred_fan.plt";
-    std::ofstream gnu_file_data(filename,std::ios::out|std::ios::trunc);
-    if(gnu_file_data){
-        unsigned int cpt = 0;
-        double thresh = pred_fan[0].mean - 2*pred_fan[0].std_dev;
-        std::for_each(std::begin(db_fan[0].values), std::end(db_fan[0].values), [&gnu_file_data,&cpt,&thresh](const double val) {
-            gnu_file_data << cpt++ << " " << val << " " << thresh << "\n";
-        });
-    }else
-        std::cout << std::endl << "Something went wrong with gnuplot data file ..." << std::endl;
-
-    /** APPEL SYSTEM PAR THREAD DETACHED MAIS PRG ATTEND QUE LA FERME SOIT FERMEE POUR QUITTER NORMALEMENT LE MAIN **/
-    std::cout << std::endl << "Test GNUPLOT" << std::endl;
-    std::thread t([](){system("wgnuplot -persist \"C:\\Users\\94000187\\Desktop\\projet_en_cours\\CEI\\test_cpp\\pred\\pred_fan_conf.plt");});
-    t.detach();
+        /** APPEL SYSTEM PAR THREAD DETACHED MAIS PRG ATTEND QUE LES THREADS SOIENT FERMES POUR QUITTER NORMALEMENT LE MAIN **/
+        std::thread([&filename](){std::string cmd("wgnuplot -persist "+filename);system(cmd.c_str());}).detach();
+        std::this_thread::sleep_for(1ms); // for temporisation otherwise it crashes !
+    }
 }
 
-void prediction_steps(allConf db){ /** Out a predictor object in a file : /pred/predfan,... **/
+void fan_prediction(const allConf& db){
+
+    /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
+    allConf db_fan = filtering_db(std::cref(db));
+
+    /** NEXT STEP IS TO CALCULATE MEAN AND STANDARD DEVIATION FOR EACH SIGNAL **/
+    vectPred pred_fan;
+
+    for(unsigned int i=0; i<db_fan.size(); ++i){
+        double sum = std::accumulate(std::begin(db_fan[i].values), std::end(db_fan[i].values), 0.0);
+        double mean =  sum / db_fan[i].values.size();
+        double accum = 0.0;
+        std::for_each (std::begin(db_fan[i].values), std::end(db_fan[i].values), [&](const double d) {
+            accum += (d - mean) * (d - mean);
+        });
+        double stdev = std::sqrt(accum / (db_fan[i].values.size()-1));
+        pred_fan.push_back(stat_pred(db_fan[i].signalName,mean,stdev));
+    }
+
+    save_and_plot_predictors(std::cref(pred_fan),std::cref(db_fan));
+}
+
+void temp_motor_prediction(const allConf& db){
+
+//std::cout << std::endl << "Temp motor prediction only available if Tambiant = 20 degrees Celsius !" << std::endl;
+
+}
+
+void make_predictor_steps(allConf db){ /** Out a predictor object in a file : /pred/predfan,... **/
 
     std::cout << std::endl << "Pred step" << std::endl;
     clock_t t1,t2;
@@ -430,13 +436,14 @@ void prediction_steps(allConf db){ /** Out a predictor object in a file : /pred/
     t1=clock();
 
     /** Step 1 (Thread 1) : Fan speed stuff**/
-    std::thread th_fan(fan_prediction,std::ref(db));
-    //fan_prediction(db);
+    std::thread th_fan(fan_prediction,std::cref(db)); /** std::ref car besoin d'une référence pour fan_prediction**/
 
     /** STEP 2 (Thread 2) : Temp Motor **/
+    std::thread th_temp(temp_motor_prediction,std::cref(db));
 
     /** Join of each thread **/
     th_fan.join();
+    th_temp.join();
     t2 = clock();
 
     std::cout << std::endl << "Temps d'execution des etapes de prediction : " << ((float)(t2-t1)/CLOCKS_PER_SEC) << std::endl;

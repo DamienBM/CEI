@@ -2,7 +2,7 @@
 1515592207 source:c:\users\94000187\documents\cei-fanuc\main.c
 	"header.h"
 
-1518627546 c:\users\94000187\documents\cei-fanuc\header.h
+1518702537 c:\users\94000187\documents\cei-fanuc\header.h
 	<string>
 	<vector>
 	<iostream>
@@ -19,8 +19,9 @@
 	<numeric>
 	<cmath>
 	<algorithm>
+	<functional>
 
-1518645685 source:c:\users\94000187\documents\cei-fanuc\main.cpp
+1518725811 source:c:\users\94000187\documents\cei-fanuc\main.cpp
 	"header.h"
 
 1504344779 c:\program files (x86)\codeblocks\mingw\include\boost\thread

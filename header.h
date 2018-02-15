@@ -16,6 +16,8 @@
 #include <numeric>
 #include <cmath>
 #include <algorithm>
+#include <functional>
+#include <chrono>
 
 #define MSEC 1000
 #define PAUSE system("pause");
@@ -41,8 +43,12 @@ typedef std::vector<stat_pred> vectPred;
 allConf create_DB(void);
 void ecriture_thread(allConf);
 int ecriture(info_sig);
-void delete_stuff(std::string cur_dir);
-void sparse_db(std::ifstream& fichier,allConf& db);
+void delete_stuff(std::string);
+void sparse_db(std::ifstream&,allConf&);
 allConf first_steps(void);
-void prediction_steps(allConf);
-void fan_prediction(allConf&);
+void make_predictor_steps(allConf);
+allConf filtering_db(const allConf&);
+void save_and_plot_predictors(const vectPred&,const allConf&);
+void fan_prediction(const allConf&);
+void temp_motor_prediction(const allConf&);
+
