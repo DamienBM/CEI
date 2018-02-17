@@ -40,12 +40,13 @@ int main(int argc, char** argv)
     return 0;
 }
 
+/** FIRST STEP FUNCTIONS **/
+
 void sparse_db(std::ifstream& fichier, allConf& db){
     /** Sparse DB and fill vector from db **/
     std::string chaine;
     double timespan_msec = 0;
 
-    //std::cout << "Fichier ouvert !" << std::endl;
     while(std::getline(fichier,chaine)){
 
         char *ptr = strtok((char*)chaine.c_str(),"{}$,:\"");
@@ -264,9 +265,6 @@ allConf first_steps(void){
     std::string cur_dir = _getcwd(NULL,0);
     std::string file_in = cur_dir + "\\DB\\mtlinki_Signal.txt";
 
-    /** PAUSE FOR HAVING TIME TO COPY/PASTE THE DB BASE FILE **/
-    //PAUSE
-
     std::ifstream fichier;
     fichier.open(file_in, std::ios::in);
 
@@ -306,6 +304,11 @@ allConf first_steps(void){
 
     return db;
 }
+
+/** END FIRST STEP FUNCTIONS **/
+
+
+/** PREDICTORS CONSTRUCTION STEPS FUNCTIONS **/
 
 allConf filtering_db(const allConf& db){
 
@@ -439,17 +442,17 @@ void make_predictor_steps(allConf db){ /** Out a predictor object in a file : /p
     std::thread th_fan(fan_prediction,std::cref(db)); /** std::ref car besoin d'une référence pour fan_prediction**/
 
     /** STEP 2 (Thread 2) : Temp Motor **/
-    std::thread th_temp(temp_motor_prediction,std::cref(db));
+    //std::thread th_temp(temp_motor_prediction,std::cref(db));
 
     /** Join of each thread **/
     th_fan.join();
-    th_temp.join();
+    //th_temp.join();
     t2 = clock();
 
     std::cout << std::endl << "Temps d'execution des etapes de prediction : " << ((float)(t2-t1)/CLOCKS_PER_SEC) << std::endl;
 }
 
-
+/** END PREDICTORS CONSTRUCTION STEPS FUNCTIONS **/
 
 
 
