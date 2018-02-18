@@ -30,17 +30,16 @@ V7 : Lire en continu L1Signal_Pool_Active pour avoir une image à l'instant T des
 
 int main(int argc, char** argv)
 {
-    allConf db;
-    db = first_steps(); /** Do the first steps : DB => SPARSE DB => OUT DATA **/
+    allConf db = first_steps(); /** Do the first steps : DB => SPARSE DB => OUT DATA **/
 
-    make_predictor_steps(db);
+    make_predictor_steps(db); /** Do the predictors construction steps **/
 
-    PAUSE
+    predictions_step(); /** Do the predictions step **/
 
     return 0;
 }
 
-/** FIRST STEP FUNCTIONS **/
+/** GET DB STEP FUNCTIONS **/
 
 void sparse_db(std::ifstream& fichier, allConf& db){
     /** Sparse DB and fill vector from db **/
@@ -83,7 +82,7 @@ void sparse_db(std::ifstream& fichier, allConf& db){
     }
 }
 
-void delete_stuff(std::string cur_dir){
+void delete_stuff(std::string& cur_dir){
     /** Suppresion des fichiers de 0Ko **/
     std::string del_cmd = "for /r " + cur_dir + "\\out %i in (*.txt) do if %~zi == 0 del %i";
     system(del_cmd.c_str());
@@ -93,7 +92,7 @@ void delete_stuff(std::string cur_dir){
     system(tmp_rmdir.c_str());
 }
 
-int ecriture(info_sig sig){
+int ecriture(const info_sig& sig){
 
     std::string cur_dir = _getcwd(NULL,0);
     std::string path_out = cur_dir+"\\out\\";
@@ -114,10 +113,10 @@ int ecriture(info_sig sig){
     return 1;
 }
 
-void ecriture_thread(allConf db){
+void ecriture_thread(const allConf& db){
 
     std::chrono::milliseconds span (10);
-    unsigned int n = std::thread::hardware_concurrency(); // 8 threads au max en même temps
+    unsigned int n = std::thread::hardware_concurrency(); // n threads au max en même temps
 
     std::vector<std::future<int>> tab_fut;
     std::future<int> fut;
@@ -125,7 +124,7 @@ void ecriture_thread(allConf db){
 
     for (j = 0; j<n && j<db.size();++j){
         //init threads here
-        tab_fut.push_back(std::async(std::launch::async,ecriture,db[j]));
+        tab_fut.push_back(std::async(std::launch::async,ecriture,std::cref(db[j])));
     }
 
     if(j==db.size()){
@@ -207,10 +206,10 @@ allConf create_DB(void){
 
     if(L0_Setting){
         //std::cout << "Fichier ouvert !" << std::endl;
-        struct info_sig dummy;
+        info_sig dummy;
         std::string sig_name;
         while(std::getline(L0_Setting,chaine)){
-            char *ptr = strtok((char*)chaine.c_str(),"{}$,:\"");
+            char* ptr = strtok((char*)chaine.c_str(),"{}$,:\"");
 
             while(ptr != NULL){
                 if(strcmp(ptr,"L0Name") == 0){
@@ -252,10 +251,8 @@ allConf first_steps(void){
     clock_t t1, t2;
     t1 = clock();
 
-    allConf db;
-
     /** CREATE DIR & REQ MONGODB & FILL THE L0NAME OF ALL SIG IN db **/
-    db = create_DB();
+    allConf db = create_DB();
 
     t2 = clock();
     temps_read_db = (float)(t2-t1)/CLOCKS_PER_SEC;
@@ -305,7 +302,7 @@ allConf first_steps(void){
     return db;
 }
 
-/** END FIRST STEP FUNCTIONS **/
+/** END GET DB STEP FUNCTIONS **/
 
 
 /** PREDICTORS CONSTRUCTION STEPS FUNCTIONS **/
@@ -382,7 +379,8 @@ void save_and_plot_predictors(const vectPred& pred_fan,const allConf& db_fan){
         filename = cur_dir+"\\pred\\pred_fan_"+db_fan[i].signalName+".plt";
         std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
         if(gnu_file){
-            gnu_file << "plot '-' using 1:2 title \"data\" lc rgb '#00ff00','' using 1:2 title \"thresh\" with lines lc rgb '#00ff00'" << "\n";
+
+            gnu_file << "set xlabel \"Indice\"\n" << "set ylabel \"Speed (tr/min)\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#00ff00','' using 1:2 title \"thresh\" with lines lc rgb '#0000ff'" << "\n";
             unsigned int cpt = 0;
             double thresh = pred_fan[i].mean - 2*pred_fan[i].std_dev;
             std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt](const double val) {
@@ -431,7 +429,7 @@ void temp_motor_prediction(const allConf& db){
 
 }
 
-void make_predictor_steps(allConf db){ /** Out a predictor object in a file : /pred/predfan,... **/
+void make_predictor_steps(const allConf& db){ /** Out a predictor object in a file : /pred/predfan,... **/
 
     std::cout << std::endl << "Pred step" << std::endl;
     clock_t t1,t2;
@@ -454,8 +452,207 @@ void make_predictor_steps(allConf db){ /** Out a predictor object in a file : /p
 
 /** END PREDICTORS CONSTRUCTION STEPS FUNCTIONS **/
 
+/** PREDICTION STEP **/
+
+Predictors load_predictors(void){
+
+    Predictors predictors;
+    vectPred fan_pred;
+    stat_pred fan_tmp;
+
+    std::string path(CUR_DIR+"\\pred\\");
+
+    /** LOAD FAN PRED **/
+
+    std::string file_pred(path + "\\pred_fan.txt");
+    std::ifstream pred_fan_file(file_pred,std::ios::in);
+    if(pred_fan_file){
+        std::string chaine;
+        std::getline(pred_fan_file,chaine);/** SKIP THE FIRST LINE **/
+        while(std::getline(pred_fan_file,chaine)){
+            fan_tmp.sig_name = strtok((char*)chaine.c_str(),",");
+            fan_tmp.mean = std::atof(strtok(NULL,","));
+            fan_tmp.std_dev = std::atof(strtok(NULL,","));
+        }
+        predictors.fan_pred.push_back(fan_tmp);
+
+    }else
+        std::cout << std::endl << "Something went wrong during loading of fan predictor ! " << std::endl;
+
+    /** END LOAD FAN PRED **/
+
+    return predictors;
+}
+
+void predict(const allConf_active& active_db,const Predictors& predictors){
+
+    /** FAN PREDICTION **/
+    for(auto& pred_fan : predictors.fan_pred){
+        //pred_fan is a fan predictor from object predictors
+        for(auto& active_signal : active_db){
+            if(active_signal.signalName == pred_fan.sig_name)
+            {
+                if(active_signal.value < (pred_fan.mean-2*pred_fan.std_dev))
+                    std::cout << std::endl << " Warning , signal : " << active_signal.signalName << " has a current value under the threshold !" << std::endl
+                              << " At time : " << active_signal.time1 << ":" << active_signal.time2 << ":" << active_signal.time3 << std::endl;
+                break;
+            }
+        }
+    }
+}
+
+void get_active_db(void){
 
 
+    /** Construction requête Mongo DB **/
+    std::string active_db("\\ACTIVE_DB");
+    std::string path = CUR_DIR + active_db + "\\Active_Signals.bat";
+    std::ofstream fichier(path, std::ios::out|std::ios::trunc);
+    if(fichier){
+        fichier << "path C:\\FANUC\\MT-LINKi\\MongoDB\\bin" << std::endl << "mongoexport /d MTLINKi /u fanuc /p fanuc /c L1Signal_Pool_Active /o "<< CUR_DIR+active_db <<"\\" << ACTIVE_SIGNALS_FILE <<std::endl;
+        fichier.close();
+    }else
+        std::cout << "Oops !" << std::endl;
+
+    /** Lancement de la requête **/
+    system(path.c_str());
+}
+
+allConf_active read_active_signals_file(void){
+
+    allConf_active db_tmp;
+
+    std::string path = CUR_DIR + "\\ACTIVE_DB\\" + ACTIVE_SIGNALS_FILE;
+    std::ifstream fichier(path, std::ios::in);
+
+    if(fichier){
+
+        info_active_sig dummy;
+        std::string chaine;
+        char *ptr;
+        while(std::getline(fichier,chaine)){
+             ptr = strtok((char*)chaine.c_str(),"{}$,:\"");
+
+             while(strcmp(ptr,"L1Name")!=0){
+                ptr = strtok(NULL,"{}$,:\"");
+            }
+            ptr = strtok(NULL,"{}$,:\"");
+            dummy.L1Name = ptr;
+
+            while(strcmp(ptr,"updatedate")!=0){
+                ptr = strtok(NULL,"{}$,:\"");
+            }
+            ptr = strtok(NULL,"{}$,:\"");
+            dummy.time1 = strtok(NULL,"{}$,:\"");
+            dummy.time2 = strtok(NULL,"{}$,:\"");
+            ptr = strtok(NULL,"{}$,:\"");
+            dummy.time3 = ptr;
+
+             while(strcmp(ptr,"signalname")!=0){
+                ptr = strtok(NULL,"{}$,:\"");
+            }
+            dummy.signalName = strtok(NULL,"{}$,:\"");
+            //ici ptr vaut le nom du signal dans L1Signal_Pool
+
+            ptr = strtok(NULL,"{}$,:\"");
+            while(strcmp(ptr,"value")!=0){
+                ptr = strtok(NULL,"{}$,:\"");
+            }
+
+            dummy.value = std::atof(strtok(NULL,"{}$,:\""));
+
+            while(ptr != NULL)
+                ptr = strtok(NULL,"{}$,:\"");
+
+            db_tmp.push_back(dummy);
+        }
+
+    }else
+        std::cout << std::endl << "Something went wrong while opening Active Signals file !" << std::endl;
+
+    return db_tmp;
+}
+
+int active_db_ecriture(const info_active_sig& sig){
+
+    std::string path_out = CUR_DIR+"\\out_active\\";
+    std::string file_out;
+
+    file_out = path_out + sig.signalName + "_At_Time_" + sig.time1 + "_" + sig.time2 + "_" + sig.time3 + ".txt";
+
+    std::ofstream fichier_out(file_out, std::ios::out|std::ios::trunc);
+
+    if(fichier_out){
+        fichier_out << sig.value << std::endl;
+        fichier_out.close();
+    }else{
+        std::cout << "Pb lors de l'ecriture des fichiers out ! " << std::endl << "filename : " << file_out << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    return 1;
+}
+
+void active_db_ecriture_thread(const allConf_active& active_db){
+
+    std::chrono::milliseconds span (5);
+    unsigned int n = std::thread::hardware_concurrency(); // n threads au max en même temps
+
+    std::vector<std::future<int>> tab_fut;
+    std::future<int> fut;
+    unsigned int j = 0;
+
+    for (j = 0; j<n && j<active_db.size();++j){
+        //init threads here
+        tab_fut.push_back(std::async(std::launch::async,active_db_ecriture,active_db[j]));
+    }
+
+    if(j==active_db.size()){
+        for(unsigned int k = 0; k<n; ++k)
+            tab_fut[k].wait();
+    }
+
+    else{
+        std::cout << "Ecriture fichier dans /out sur " << tab_fut.size() <<  " threads." << std::endl;
+        unsigned int i = j; //i = n ...
+        while (i < active_db.size()){
+            for (unsigned int j = 0; j<tab_fut.size(); ++j){
+                if(tab_fut[j].wait_for(span) == std::future_status::ready){
+                    tab_fut[j] = std::async(std::launch::async,active_db_ecriture,active_db[i]);
+                    i++;
+                }
+            }
+        }
+    }
+}
+
+void create_prediction_dir(void){
+    std::string tmp_mkdir("mkdir ");
+    std::string active_db_dir("\\ACTIVE_DB");
+    tmp_mkdir += ( CUR_DIR + active_db_dir );
+    system(tmp_mkdir.c_str());
+    tmp_mkdir = "mkdir ";
+    std::string path_out = "mkdir " + CUR_DIR+"\\out_active\\";
+    system(path_out.c_str());
+}
+
+void predictions_step(void){
+
+    create_prediction_dir(); /** CREATE ACTIVE DB DIR **/
+    get_active_db(); /** STORE ACTIVE DB **/
+    allConf_active active_db = read_active_signals_file();
+    active_db_ecriture_thread(active_db);
+
+    Predictors predictors = load_predictors();
+
+    using namespace std::chrono_literals;//enable to write 10ms or 1s
+    while(true){
+        std::cout << std::endl << "Loop done !" << std::endl;
+        predict(active_db,predictors);
+        std::this_thread::sleep_for(500ms);
+    }
+}
+
+/** END PREDICTION STEP **/
 
 
 
