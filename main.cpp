@@ -34,7 +34,17 @@ int main(int argc, char** argv)
 
     make_predictor_steps(db); /** Do the predictors construction steps **/
 
-    predictions_step(); /** Do the predictions step **/
+    /*csv_filename csv_files = get_csv_files();
+    all_dist axes = read_csv_files(csv_files);
+    total_dist_vect dist_axes = calculate_dist(axes[0],axes[1]);
+
+    std::cout.precision(10);
+    std::cout << "distance sur X : " << dist_axes[0]/1000 << "m et sur Y : " << dist_axes[1]/1000 << "m" << std::endl;
+    std::cout << "en 2.77 heures (9999900 msec)" << std::endl;*/
+
+    PAUSE
+
+    //predictions_step(); /** Do the predictions step **/
 
     return 0;
 }
@@ -151,7 +161,6 @@ allConf create_DB(void){
 
     /** get le current directory **/
     std::string cur_dir = _getcwd(NULL,0);
-
 
     std::string tmp_mkdir("");
     tmp_mkdir = "mkdir " + cur_dir + "\\DB";
@@ -279,7 +288,7 @@ allConf first_steps(void){
         t1 = clock();
 
         /** Write files in out directory **/
-        //ecriture_thread(db);
+        ecriture_thread(db);
 
         t2 = clock();
         temps_write_out = (float)(t2-t1)/CLOCKS_PER_SEC;
@@ -354,7 +363,7 @@ void save_and_plot_predictors(const vectPred& pred_fan,const allConf& db_fan){
     std::string cur_dir = _getcwd(NULL,0);
     using namespace std::chrono_literals;//enable to write 10ms or 1s
 
-    /** Créer le repertoire pour les fichiers pred*.txt **/
+    /** Create directory for pred*.txt files **/
     std::string tmp_mkdir("mkdir " + cur_dir + "\\pred");
     if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
@@ -367,9 +376,9 @@ void save_and_plot_predictors(const vectPred& pred_fan,const allConf& db_fan){
     std::ofstream fichier(filename, std::ios::out|std::ios::trunc);
 
     if(fichier){
-            fichier << "Signal Name" << " , " << "Mean Value" << " , " << "Standard deviation value" << "\n";
+            fichier << "Signal Name" << " , " << "Mean Value" << " , " << "Standard deviation value" << "," << "Quantization step" << "\n";
         for(auto pred : pred_fan)
-            fichier << pred.sig_name << "," << pred.mean << "," << pred.std_dev << "\n";
+            fichier << pred.sig_name << "," << pred.mean << "," << pred.std_dev << "," << pred.q << "\n";
         fichier.close();
     }else
         std::cout << "Something went wrong with prediction fan output txt file ..." << std::endl;
@@ -380,9 +389,9 @@ void save_and_plot_predictors(const vectPred& pred_fan,const allConf& db_fan){
         std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
         if(gnu_file){
 
-            gnu_file << "set xlabel \"Indice\"\n" << "set ylabel \"Speed (tr/min)\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#00ff00','' using 1:2 title \"thresh\" with lines lc rgb '#0000ff'" << "\n";
+            gnu_file << "set title \""<< db_fan[i].signalName <<"\"\n" << "set xlabel \"Indice\"\n" << "set ylabel \"Speed (tr/min)\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000','' using 1:2 title \"thresh\" with lines lc rgb '#0000ff'" << "\n";
             unsigned int cpt = 0;
-            double thresh = pred_fan[i].mean - 2*pred_fan[i].std_dev;
+            double thresh = pred_fan[i].mean - 3*pred_fan[i].std_dev; // µ-3*sigma car P( X > µ-3*sigma) = 0.9985 (avec sigma = sigma_data + q)
             std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt](const double val) {
                 gnu_file << cpt++ << " " << val << "\n";
             });
@@ -410,14 +419,22 @@ void fan_prediction(const allConf& db){
     vectPred pred_fan;
 
     for(unsigned int i=0; i<db_fan.size(); ++i){
+        /** Get the quantification step **/
+        double d_min=100000000000;
+        double old_val=db_fan[i].values[0];
+        std::for_each (std::begin(db_fan[i].values)+1, std::end(db_fan[i].values), [&d_min,&old_val](const double val){if(std::fabs(val-old_val))d_min = std::fabs(val-old_val);old_val = val;});
+        if(d_min == 0)
+            db_fan[i].q = 200; //default value
+        else
+            db_fan[i].q = d_min;
+
+        /** Calculate mean and std_dev **/
         double sum = std::accumulate(std::begin(db_fan[i].values), std::end(db_fan[i].values), 0.0);
         double mean =  sum / db_fan[i].values.size();
         double accum = 0.0;
-        std::for_each (std::begin(db_fan[i].values), std::end(db_fan[i].values), [&](const double d) {
-            accum += (d - mean) * (d - mean);
-        });
+        std::for_each (std::begin(db_fan[i].values), std::end(db_fan[i].values), [&mean,&accum](const double x){accum += (x - mean) * (x - mean);});
         double stdev = std::sqrt(accum / (db_fan[i].values.size()-1));
-        pred_fan.push_back(stat_pred(db_fan[i].signalName,mean,stdev));
+        pred_fan.push_back(stat_pred(db_fan[i].signalName,mean,stdev+db_fan[i].q,db_fan[i].q));
     }
 
     save_and_plot_predictors(std::cref(pred_fan),std::cref(db_fan));
@@ -427,6 +444,66 @@ void temp_motor_prediction(const allConf& db){
 
 //std::cout << std::endl << "Temp motor prediction only available if Tambiant = 20 degrees Celsius !" << std::endl;
 
+
+
+}
+
+std::vector<double> calculate_dist(std::vector<double> x, std::vector <double>y){
+
+    std::vector<double> dist;
+    double dist_x=0;
+    double dist_y=0;
+    double old_val_x=x[0],old_val_y=y[0];
+
+    std::for_each(x.begin()+1,x.end(),[&dist_x,&old_val_x](const double val){ dist_x += std::fabs(val-old_val_x); old_val_x = val;});
+    std::for_each(y.begin()+1,y.end(),[&dist_y,&old_val_y](const double val){ dist_y += std::fabs(val-old_val_y); old_val_y = val;});
+
+    dist.push_back(dist_x);
+    dist.push_back(dist_y);
+
+    return dist;
+}
+
+std::vector<std::vector<double>> read_csv_files(std::vector<std::string> files){
+
+    std::vector<std::vector<double>> X_Y;
+    std::vector<double> X,Y;
+
+    for(auto& file : files){
+
+        std::ifstream fichier(file);
+        if(fichier){
+            std::cout << "file okay !" << std::endl;
+            /** TO DO  GET X AND Y POS**/
+            std::string line;
+            std::getline(fichier,line);
+            std::getline(fichier,line);
+            std::getline(fichier,line);
+            std::getline(fichier,line);
+            while(std::getline(fichier,line)){
+                char* ptr = strtok((char*)line.c_str(),",");
+                ptr = strtok(NULL,",");
+                X.push_back(std::atof(strtok(NULL,",")));
+                Y.push_back(std::atof(strtok(NULL,",")));
+            }
+        }else
+            std::cout << "Something went wrong when opening CSV file " << file << std::endl;
+        X_Y.push_back(X);
+        X_Y.push_back(Y);
+    }
+    return X_Y;
+}
+
+std::vector<std::string> get_csv_files(void){
+
+    boost::filesystem::path target(CUR_DIR+"\\CSV");
+    std::vector<std::string> test;
+    for( auto& p : boost::filesystem::directory_iterator( target ) ){
+        test.push_back(p.path().string()); //test is the std::string filename
+        std::cout << p.path().string() << std::endl;
+    }
+
+    return test;
 }
 
 void make_predictor_steps(const allConf& db){ /** Out a predictor object in a file : /pred/predfan,... **/

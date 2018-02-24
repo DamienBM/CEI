@@ -18,18 +18,23 @@
 #include <algorithm>
 #include <functional>
 #include <chrono>
+#include <list>
+#include <boost/filesystem.hpp>
 
 #define MSEC 1000
 #define PAUSE system("pause");
 #define CUR_DIR std::string(_getcwd(NULL,0))
 #define ACTIVE_SIGNALS_FILE std::string("MTLINKi_Active_Signals.txt")
+#define TEMP_MAX_MOT_WINDING 140 //Celsius degrees
+#define TEMP_MAX_PULSECODER 100  //Celsius degrees
 
 struct info_sig {
     std::string L0Name;
     std::string signalName;
     int readCycle;
     std::vector<double> values;
-    info_sig():L0Name(""),signalName(""),readCycle(0),values(){}
+    double q;
+    info_sig():L0Name(""),signalName(""),readCycle(0),values(),q(0.0){}
 };
 typedef std::vector<info_sig> allConf;
 
@@ -48,8 +53,9 @@ struct stat_pred{
     std::string sig_name;
     double mean;
     double std_dev;
-    stat_pred():sig_name(""),mean(0.0),std_dev(0.0){}
-    stat_pred(std::string sig_name, double mean, double std_dev):sig_name(sig_name),mean(mean),std_dev(std_dev){}
+    double q;
+    stat_pred():sig_name(""),mean(0.0),std_dev(0.0),q(0.0){}
+    stat_pred(std::string sig_name, double mean, double std_dev, double q):sig_name(sig_name),mean(mean),std_dev(std_dev),q(q){}
 };
 typedef std::vector<stat_pred> vectPred;
 
@@ -58,6 +64,10 @@ struct Predictors{
 
     Predictors():fan_pred(){}
 };
+
+typedef std::vector<std::string> csv_filename;
+typedef std::vector<std::vector<double>> all_dist;
+typedef std::vector<double> total_dist_vect;
 
 allConf create_DB(void);
 void ecriture_thread(const allConf&);
@@ -77,4 +87,7 @@ Predictors load_predictors(void);
 void predict(const allConf_active&,const Predictors&);
 void get_active_db(void);
 void predictions_step(void);
+std::vector<double> calculate_dist(std::vector<double> , std::vector <double>);
+std::vector<std::string> get_csv_files(void);
+std::vector<std::vector<double>> read_csv_files(std::vector<std::string>);
 
