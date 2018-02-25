@@ -19,8 +19,9 @@ V5 : amélioration avec des thread & future lors de l'écriture des fichiers dans 
 
 V6 : séparation du code en plusieurs morceaux selon schéma ci-après
      MongoDB => dossier out => plusieurs thread (un pour la temp, un pour la distance, un pour le sens de rotation etc)
-       OK    =>      OK     => done : fan_pred ;
-                               to do : temp_pred, dist_pred, rotation_pred, ...
+       OK    =>      OK     => done  -> fan_pred with gaussian model : thresh = (µ-3*sigma) ;
+                                     -> calculate distance with CSV file from Servo Viewer
+                               to do -> temp_pred, rotation_pred, ...
 
 A venir ....
 
@@ -108,12 +109,13 @@ int ecriture(const info_sig& sig){
     std::string path_out = cur_dir+"\\out\\";
     std::string file_out;
 
-    file_out = path_out + sig.signalName + "_TimeCycle_" + std::to_string(sig.readCycle) + ".txt";
+    file_out = path_out + sig.signalName + "_TimeCycle_" + std::to_string(sig.readCycle) + ".plt";
     std::ofstream fichier_out(file_out, std::ios::out|std::ios::trunc);
 
     if(fichier_out){
+        fichier_out << "set title \"" << sig.signalName <<"\"\n" << "set xlabel \"Indice\"\n" << "set ylabel \"Amplitude\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000'" << "\n";
         for(unsigned int j = 0; j != sig.values.size(); ++j)
-            fichier_out << sig.values[j] << std::endl;
+            fichier_out << j << " " << sig.values[j] << std::endl;
         fichier_out.close();
     }else{
         std::cout << "Pb lors de l'ecriture des fichiers out !" << std::endl;
@@ -636,12 +638,16 @@ allConf_active read_active_signals_file(void){
                 ptr = strtok(NULL,"{}$,:\"");
             }
 
-            dummy.value = std::atof(strtok(NULL,"{}$,:\""));
+            ptr = strtok(NULL,"{}$,:\"");
 
-            while(ptr != NULL)
-                ptr = strtok(NULL,"{}$,:\"");
+            if(strcmp(ptr,"null")!=0){
+                dummy.value = std::atof(strtok(NULL,"{}$,:\""));
 
-            db_tmp.push_back(dummy);
+                while(ptr != NULL)
+                    ptr = strtok(NULL,"{}$,:\"");
+
+                db_tmp.push_back(dummy);
+            }
         }
 
     }else
