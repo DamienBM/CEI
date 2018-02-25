@@ -20,7 +20,8 @@ V5 : amélioration avec des thread & future lors de l'écriture des fichiers dans 
 V6 : séparation du code en plusieurs morceaux selon schéma ci-après
      MongoDB => dossier out => plusieurs thread (un pour la temp, un pour la distance, un pour le sens de rotation etc)
        OK    =>      OK     => done  -> fan_pred with gaussian model : thresh = (µ-3*sigma) ;
-                                     -> calculate distance with CSV file from Servo Viewer
+                                     -> calculate distance with CSV file from Servo Viewer ;
+                                     -> Load histogram ;
                                to do -> temp_pred, rotation_pred, ...
 
 A venir ....
@@ -40,7 +41,7 @@ int main(int argc, char** argv)
     total_dist_vect dist_axes = calculate_dist(axes[0],axes[1]);
 
     std::cout.precision(10);
-    std::cout << "distance sur X : " << dist_axes[0]/1000 << "m et sur Y : " << dist_axes[1]/1000 << "m" << std::endl;
+    std::cout << "distance sur X : " << dist_axes[0]/100 << "m et sur Y : " << dist_axes[1]/100 << "m" << std::endl;
     std::cout << "en 2.77 heures (9999900 msec)" << std::endl;*/
 
     PAUSE
@@ -93,13 +94,13 @@ void sparse_db(std::ifstream& fichier, allConf& db){
     }
 }
 
-void delete_stuff(std::string& cur_dir){
+void delete_stuff(void){
     /** Suppresion des fichiers de 0Ko **/
-    std::string del_cmd = "for /r " + cur_dir + "\\out %i in (*.txt) do if %~zi == 0 del %i";
+    std::string del_cmd = "for /r " + CUR_DIR + "\\out %i in (*.txt) do if %~zi == 0 del %i";
     system(del_cmd.c_str());
 
     /** Suppression du dossier db (éviter de fuiter l'accès aux données) **/
-    std::string tmp_rmdir = "rmdir /s /q " + cur_dir + "\\DB";
+    std::string tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\DB";
     system(tmp_rmdir.c_str());
 }
 
@@ -159,46 +160,51 @@ void ecriture_thread(const allConf& db){
 
 allConf create_DB(void){
     allConf db;
-    //system("chemin_fichier_batch"); pour lancer les *.bat
-
-    /** get le current directory **/
-    std::string cur_dir = _getcwd(NULL,0);
 
     std::string tmp_mkdir("");
-    tmp_mkdir = "mkdir " + cur_dir + "\\DB";
+    tmp_mkdir = "mkdir " + CUR_DIR + "\\DB";
 
     /** Créer le repertoire pour stocker la BDD **/
     /*if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
-        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\DB";
+        tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\DB";
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
     }*/
 
 
-    tmp_mkdir = "mkdir " + cur_dir + "\\batch";
+    tmp_mkdir = "mkdir " + CUR_DIR + "\\batch";
     /** Créer le repertoire pour les fichiers bat **/
     if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
-        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\batch";
+        tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\batch";
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
     }
 
-    //tmp_mkdir = "mkdir " + cur_dir + "\\out";
+    //tmp_mkdir = "mkdir " + CUR_DIR + "\\out";
     /** Créer le repertoire pour les fichiers out **/
     /*if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
-        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\out";
+        tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\out";
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
     }*/
 
+    /** Create directory for pred files **/
+    tmp_mkdir = "mkdir " + CUR_DIR + "\\pred";
+    if( system(tmp_mkdir.c_str()) ){
+        std::string tmp_rmdir("");
+        tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\pred";
+        system(tmp_rmdir.c_str());
+        system(tmp_mkdir.c_str());
+    }
+
     /** Construction requete MongoDB **/
-    std::string path = cur_dir + "\\batch\\Signal.bat";
+    std::string path = CUR_DIR + "\\batch\\Signal.bat";
     std::ofstream fichier(path, std::ios::out|std::ios::trunc);
     if(fichier){
-        fichier << "path C:\\FANUC\\MT-LINKi\\MongoDB\\bin" << std::endl << "mongoexport /d MTLINKi /u fanuc /p fanuc /c L1Signal_Pool /o "<< cur_dir << "\\db\\mtlinki_Signal.txt" <<std::endl;
+        fichier << "path C:\\FANUC\\MT-LINKi\\MongoDB\\bin" << std::endl << "mongoexport /d MTLINKi /u fanuc /p fanuc /c L1Signal_Pool /o "<< CUR_DIR << "\\db\\mtlinki_Signal.txt" <<std::endl;
         fichier.close();
     }else
         std::cout << "Oops !" << std::endl;
@@ -208,7 +214,7 @@ allConf create_DB(void){
 
     /** Suppression du dossier batch (éviter de fuiter l'accès aux données) **/
     std::string tmp_rmdir("");
-    tmp_rmdir = "rmdir /s /q " + cur_dir + "\\batch";
+    tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\batch";
     system(tmp_rmdir.c_str());
 
     /** Récupération des infos dans L0Setting **/
@@ -267,7 +273,7 @@ allConf first_steps(void){
 
     t2 = clock();
     temps_read_db = (float)(t2-t1)/CLOCKS_PER_SEC;
-    std::cout << "Temps lecture base de donnees : " << temps_read_db << std::endl;
+    std::cout << std::endl << "Temps lecture base de donnees : " << temps_read_db << std::endl;
     t1 = clock();
 
     std::string cur_dir = _getcwd(NULL,0);
@@ -285,7 +291,7 @@ allConf first_steps(void){
 
         t2 = clock();
         temps_write_db = (float)(t2-t1)/CLOCKS_PER_SEC;
-        std::cout << "Temps ecriture base de donnees fichier txt : " << temps_write_db << std::endl;
+        std::cout << std::endl << "Temps ecriture base de donnees fichier txt : " << temps_write_db << std::endl;
 
         t1 = clock();
 
@@ -294,21 +300,21 @@ allConf first_steps(void){
 
         t2 = clock();
         temps_write_out = (float)(t2-t1)/CLOCKS_PER_SEC;
-        std::cout << "Temps ecriture fichiers out : " << temps_write_out << std::endl;
+        std::cout << std::endl << "Temps ecriture fichiers out : " << temps_write_out << std::endl;
         t1=clock();
 
     }else
         std::cout << "Impossible d'ouvrir le fichier : mtlinki_Signal.txt" << std::endl;
 
     /** Delete DB directory and 0 Ko files in OUT directory **/
-    //delete_stuff(cur_dir);
+    //delete_stuff();
 
     std::cout << std::endl << "First steps completed !" << std::endl;
 
     t2 = clock();
     temps_all = ((float)(t2-t1)/CLOCKS_PER_SEC)+temps_read_db+temps_write_db+temps_write_out;
 
-    std::cout << "Temps d'execution des premieres etapes : " << temps_all << std::endl;
+    std::cout << std::endl << "Temps d'execution des premieres etapes : " << temps_all << std::endl;
 
     return db;
 }
@@ -318,63 +324,52 @@ allConf first_steps(void){
 
 /** PREDICTORS CONSTRUCTION STEPS FUNCTIONS **/
 
-allConf filtering_db(const allConf& db){
+allConf db_filtering(const allConf& db,const std::string& filt){
 
     /** SPARSE DB WITH ALL FAN SIGNALS **/
-    std::string fan("Fan");
     std::vector<std::string> file_to_open;
-    allConf db_fan;
+    allConf db_filt;
     for (unsigned int i=0; i<db.size(); ++i){
-        if(db[i].signalName.find(fan) != std::string::npos){
-            db_fan.push_back(db[i]);//works
+        if(db[i].signalName.find(filt) != std::string::npos){
+            db_filt.push_back(db[i]);//works
         }
     }
 
     std::vector<int> idx_at_erase;
 
-    for(unsigned int i=0; i<db_fan.size(); ++i){
+    for(unsigned int i=0; i<db_filt.size(); ++i){
         unsigned long int cpt=0;
-        for(unsigned int j=0; j<db_fan[i].values.size(); ++j){
-            if(db_fan[i].values[j] == 0)
+        for(unsigned int j=0; j<db_filt[i].values.size(); ++j){
+            if(db_filt[i].values[j] == 0)
                 cpt++;
         }
-        if(cpt == db_fan[i].values.size()) /** IF ALL VALUES ARE EQUAL TO 0 ... **/
+        if(cpt == db_filt[i].values.size()) /** IF ALL VALUES ARE EQUAL TO 0 ... **/
             idx_at_erase.push_back(i);
     }
 
-    /** MUST ERASE FORM THE END OF THE VECTOR**/
+    /** MUST ERASE FROM THE END OF THE VECTOR**/
     for (unsigned int i=idx_at_erase.size(); i>0; --i)
-        db_fan.erase(db_fan.begin()+idx_at_erase[i-1]);
+        db_filt.erase(db_filt.begin()+idx_at_erase[i-1]);
 
-    /** DB_FAN IS A VECTOR FILLED WITH USEFUL SIGNALS (WITH SOME ZEROS IN THEM ...) FROM FAN SPEED FROM HERE **/
-
-    /** MUST REMOVE ALL 0 INSIDE VALUES ... **/
-    for(unsigned int i=0; i<db_fan.size(); ++i){
-        for(unsigned int j=db_fan[i].values.size(); j>0; --j){
-            if(db_fan[i].values[j-1] == 0)
-                db_fan[i].values.erase(db_fan[i].values.begin()+(j-1));
-        }
-    }
-
-    return  db_fan;
+    return  db_filt;
 
 }
 
-void save_and_plot_predictors(const vectPred& pred_fan,const allConf& db_fan){
+void save_and_plot_fan_predictors(const vectPred& pred_fan,const allConf& db_fan){
     /** SAVE THE PREDICTOR IN A TXT FILE  FROM VECTOR PRED_FAN**/
     std::string cur_dir = _getcwd(NULL,0);
     using namespace std::chrono_literals;//enable to write 10ms or 1s
 
     /** Create directory for pred*.txt files **/
-    std::string tmp_mkdir("mkdir " + cur_dir + "\\pred");
+    std::string tmp_mkdir("mkdir " + cur_dir + "\\pred\\pred_fan");
     if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
-        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\pred";
+        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\pred\\pred_fan";
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
     }
 
-    std::string filename(cur_dir+"\\pred\\pred_fan.txt");
+    std::string filename(cur_dir+"\\pred\\pred_fan\\pred_fan.txt");
     std::ofstream fichier(filename, std::ios::out|std::ios::trunc);
 
     if(fichier){
@@ -387,67 +382,192 @@ void save_and_plot_predictors(const vectPred& pred_fan,const allConf& db_fan){
 
     /** PLOT WITH GNUPLOT DATA AND PREDICTION THRESHOLD FOR EACH SIGNAL **/
     for(unsigned int i=0; i<db_fan.size(); ++i){
-        filename = cur_dir+"\\pred\\pred_fan_"+db_fan[i].signalName+".plt";
+        filename = cur_dir+"\\pred\\pred_fan\\pred_fan_"+db_fan[i].signalName+".plt";
         std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
         if(gnu_file){
 
             gnu_file << "set title \""<< db_fan[i].signalName <<"\"\n" << "set xlabel \"Indice\"\n" << "set ylabel \"Speed (tr/min)\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000','' using 1:2 title \"thresh\" with lines lc rgb '#0000ff'" << "\n";
             unsigned int cpt = 0;
-            double thresh = pred_fan[i].mean - 3*pred_fan[i].std_dev; // µ-3*sigma car P( X > µ-3*sigma) = 0.9985 (avec sigma = sigma_data + q)
             std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt](const double val) {
                 gnu_file << cpt++ << " " << val << "\n";
             });
             cpt=0;
+            double thresh = pred_fan[i].mean - 3*pred_fan[i].std_dev; // µ-3*sigma car P( X > µ-3*sigma) = 0.9985 (avec sigma = sigma_data + q)
             gnu_file << "e" << "\n";
             std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt,&thresh](const double val) {
                 gnu_file << cpt++ << " " << thresh << "\n";
             });
             gnu_file.close();
         }else
-            std::cout << std::endl << "Something went wrong with gnuplot data file ..." << std::endl;
+            std::cout << std::endl << "Something went wrong with fan gnuplot data file ..." << std::endl;
 
         /** APPEL SYSTEM PAR THREAD DETACHED MAIS PRG ATTEND QUE LES THREADS SOIENT FERMES POUR QUITTER NORMALEMENT LE MAIN **/
-        std::thread([&filename](){std::string cmd("wgnuplot -persist "+filename);system(cmd.c_str());}).detach();
-        std::this_thread::sleep_for(1ms); // for temporisation otherwise it crashes !
+        /*std::thread([&filename](){std::string cmd("wgnuplot -persist "+filename);system(cmd.c_str());}).detach();
+        std::this_thread::sleep_for(1ms);*/ // for temporisation otherwise it crashes !
     }
+}
+
+void save_and_plot_load_pred (const vectLoadStat& load){
+
+    /** SAVE THE PREDICTOR IN A TXT FILE  FROM VECTOR PRED_FAN**/
+    std::string cur_dir = _getcwd(NULL,0);
+    using namespace std::chrono_literals;//enable to write 10ms or 1s
+
+    /** Create directory for pred*.txt files **/
+    std::string tmp_mkdir("mkdir " + cur_dir + "\\pred\\pred_load");
+    if( system(tmp_mkdir.c_str()) ){
+        std::string tmp_rmdir("");
+        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\pred\\pred_load";
+        system(tmp_rmdir.c_str());
+        system(tmp_mkdir.c_str());
+    }
+
+    std::string filename(cur_dir+"\\pred\\pred_load\\pred_load.txt");
+    std::ofstream fichier(filename, std::ios::out|std::ios::trunc);
+
+    /** TXT FILE **/
+    if(fichier){
+            fichier << "Signal Name" << " , " << "0_50_range" << " , " << "51_100_range" << " , " << "101_150_range" << " , "
+                    << "151_200_range" << " , " << "201_250_range" << " , " << "251_300_range" << " , " << "301_350_range" << " , "
+                    << "351_400_range" << " , " << "401_450_range" << " , " << "451_500_range"
+                    << "\n";
+        for(auto sig : load)
+            fichier << sig.sig_name << "," << sig._0_50_range << "," << sig._51_100_range << "," << sig._101_150_range << ","
+                    << sig._151_200_range << "," << sig._201_250_range << "," << sig._251_300_range << "," << sig._301_350_range << ","
+                    << sig._351_400_range << "," << sig._401_450_range << "," << sig._451_500_range
+                    << "\n";
+        fichier.close();
+    }else
+        std::cout << "Something went wrong with prediction load output txt file ..." << std::endl;
+
+    /** PLOT FILES **/
+    for(unsigned int i=0; i<load.size(); ++i){
+
+        filename = cur_dir+"\\pred\\pred_load\\load_pred_"+load[i].sig_name+".plt";
+        std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
+
+        if(gnu_file){
+
+            gnu_file << "set title \""<< load[i].sig_name <<"\"\n"
+                     << "set xlabel \"Load (stack of 50)\"\n" << "set ylabel \"Number of times per range / Total number of times (%)\"\n"
+                     << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
+            unsigned int val=0;
+            for(unsigned int cpt=0; cpt<10; ++cpt){// don't go further than 500 !!!
+                int tmp = cpt*50;
+
+
+                if(cpt==0)       val = load[i]._0_50_range;
+                else if(cpt==1) {val = load[i]._51_100_range;  gnu_file << tmp << " " << val <<"\n";}
+                else if(cpt==2) {val = load[i]._101_150_range; gnu_file << tmp << " " << val <<"\n";}
+                else if(cpt==3) {val = load[i]._151_200_range; gnu_file << tmp << " " << val <<"\n";}
+                else if(cpt==4) {val = load[i]._201_250_range; gnu_file << tmp << " " << val <<"\n";}
+                else if(cpt==5) {val = load[i]._251_300_range; gnu_file << tmp << " " << val <<"\n";}
+                else if(cpt==6) {val = load[i]._301_350_range; gnu_file << tmp << " " << val <<"\n";}
+                else if(cpt==7) {val = load[i]._351_400_range; gnu_file << tmp << " " << val <<"\n";}
+                else if(cpt==8) {val = load[i]._401_450_range; gnu_file << tmp << " " << val <<"\n";}
+                else            {val = load[i]._451_500_range; gnu_file << tmp << " " << val <<"\n";}
+
+                for(unsigned int j=1+tmp; j<50+tmp+1; ++j)
+                    gnu_file << j << " " << val <<"\n";
+            }
+
+            gnu_file.close();
+        }else
+            std::cout << std::endl << "Something went wrong with load gnuplot data file ..." << std::endl;
+
+    }
+
 }
 
 void fan_prediction(const allConf& db){
 
     /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
-    allConf db_fan = filtering_db(std::cref(db));
+    const std::string fan = "Fan";
+    allConf db_fan = db_filtering(std::cref(db),fan);
+
+    /** DB_FAN IS A VECTOR FILLED WITH USEFUL SIGNALS (WITH SOME ZEROS IN THEM ...) FROM FAN SPEED FROM HERE **/
+    /** MUST REMOVE ALL 0 INSIDE VALUES ... **/
+    allConf db_filtered;
+    for(unsigned int i=0; i<db_fan.size(); ++i){
+
+        info_sig dum(db_fan[i].L0Name,db_fan[i].signalName,db_fan[i].readCycle,db_fan[i].q);
+
+        for(unsigned int j=0; j<db_fan[i].values.size(); ++j){ // fill values vector of dum with only non-zero values
+            if(db_fan[i].values[j] != 0)
+                dum.values.push_back(db_fan[i].values[j]);
+        }
+        db_filtered.push_back(dum);
+    }
 
     /** NEXT STEP IS TO CALCULATE MEAN AND STANDARD DEVIATION FOR EACH SIGNAL **/
     vectPred pred_fan;
 
-    for(unsigned int i=0; i<db_fan.size(); ++i){
+    for(unsigned int i=0; i<db_filtered.size(); ++i){
         /** Get the quantification step **/
         double d_min=100000000000;
-        double old_val=db_fan[i].values[0];
-        std::for_each (std::begin(db_fan[i].values)+1, std::end(db_fan[i].values), [&d_min,&old_val](const double val){if(std::fabs(val-old_val))d_min = std::fabs(val-old_val);old_val = val;});
+        double old_val=db_filtered[i].values[0];
+        std::for_each (std::begin(db_filtered[i].values)+1, std::end(db_filtered[i].values), [&d_min,&old_val](const double val){if(val!=0){if(std::fabs(val-old_val))d_min = std::fabs(val-old_val);old_val = val;}});
         if(d_min == 0)
-            db_fan[i].q = 200; //default value
+            db_filtered[i].q = 200; //default value
         else
-            db_fan[i].q = d_min;
+            db_filtered[i].q = d_min;
 
         /** Calculate mean and std_dev **/
-        double sum = std::accumulate(std::begin(db_fan[i].values), std::end(db_fan[i].values), 0.0);
-        double mean =  sum / db_fan[i].values.size();
+        double sum = std::accumulate(std::begin(db_filtered[i].values), std::end(db_filtered[i].values), 0.0);
+        double mean =  sum / db_filtered[i].values.size();
         double accum = 0.0;
-        std::for_each (std::begin(db_fan[i].values), std::end(db_fan[i].values), [&mean,&accum](const double x){accum += (x - mean) * (x - mean);});
-        double stdev = std::sqrt(accum / (db_fan[i].values.size()-1));
-        pred_fan.push_back(stat_pred(db_fan[i].signalName,mean,stdev+db_fan[i].q,db_fan[i].q));
+        std::for_each (std::begin(db_filtered[i].values), std::end(db_filtered[i].values), [&mean,&accum](const double x){accum += (x - mean) * (x - mean);});
+        double stdev = std::sqrt(accum / (db_filtered[i].values.size()-1));
+        pred_fan.push_back(stat_pred(db_filtered[i].signalName,mean,stdev+db_filtered[i].q,db_filtered[i].q));
     }
 
-    save_and_plot_predictors(std::cref(pred_fan),std::cref(db_fan));
+    save_and_plot_fan_predictors(std::cref(pred_fan),std::cref(db_filtered));
 }
 
-void temp_motor_prediction(const allConf& db){
+void load_motor_prediction(const allConf& db){
 
-//std::cout << std::endl << "Temp motor prediction only available if Tambiant = 20 degrees Celsius !" << std::endl;
+    /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
+    const std::string load_str = "Load";
+    allConf db_load = db_filtering(std::cref(db),load_str);
 
+    vectLoadStat load;
+    load_stat dummy;
 
+    for(unsigned int i=0;i<db_load.size();++i){
+        dummy.sig_name = db_load[i].signalName;
+        double sum = db_load[i].values.size();
+        std::cout << "sum = " << sum << " of signal : " << dummy.sig_name << std::endl;
+        std::for_each(std::begin(db_load[i].values),std::end(db_load[i].values),[&dummy,&sum](const double val){
+                        if(val<=50)       dummy._0_50_range++;
+                        else if(val<=100) dummy._51_100_range++;
+                        else if(val<=150) dummy._101_150_range++;
+                        else if(val<=200) dummy._151_200_range++;
+                        else if(val<=250) dummy._201_250_range++;
+                        else if(val<=300) dummy._251_300_range++;
+                        else if(val<=350) dummy._301_350_range++;
+                        else if(val<=400) dummy._351_400_range++;
+                        else if(val<=450) dummy._401_450_range++;
+                        else              dummy._451_500_range++;
+                      });
 
+        dummy._0_50_range*=(100/sum);
+        dummy._51_100_range*=(100/sum);
+        dummy._101_150_range*=(100/sum);
+        dummy._151_200_range*=(100/sum);
+        dummy._201_250_range*=(100/sum);
+        dummy._251_300_range*=(100/sum);
+        dummy._301_350_range*=(100/sum);
+        dummy._351_400_range*=(100/sum);
+        dummy._401_450_range*=(100/sum);
+        dummy._451_500_range*=(100/sum);
+
+        load.push_back(dummy);
+
+    }
+
+    /** HERE load IS FULLFILLED WITH USEFUL SIGNALS **/
+
+    save_and_plot_load_pred(load);
 }
 
 std::vector<double> calculate_dist(std::vector<double> x, std::vector <double>y){
@@ -519,11 +639,11 @@ void make_predictor_steps(const allConf& db){ /** Out a predictor object in a fi
     std::thread th_fan(fan_prediction,std::cref(db)); /** std::ref car besoin d'une référence pour fan_prediction**/
 
     /** STEP 2 (Thread 2) : Temp Motor **/
-    //std::thread th_temp(temp_motor_prediction,std::cref(db));
+    std::thread load_temp(load_motor_prediction,std::cref(db));
 
     /** Join of each thread **/
     th_fan.join();
-    //th_temp.join();
+    load_temp.join();
     t2 = clock();
 
     std::cout << std::endl << "Temps d'execution des etapes de prediction : " << ((float)(t2-t1)/CLOCKS_PER_SEC) << std::endl;
@@ -531,9 +651,10 @@ void make_predictor_steps(const allConf& db){ /** Out a predictor object in a fi
 
 /** END PREDICTORS CONSTRUCTION STEPS FUNCTIONS **/
 
+
 /** PREDICTION STEP **/
 
-Predictors load_predictors(void){
+Predictors load_predictors(void){ /** READ TXT FILEs FROM ALL SAVED PREDICTORS **/
 
     Predictors predictors;
     vectPred fan_pred;

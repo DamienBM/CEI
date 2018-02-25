@@ -35,6 +35,7 @@ struct info_sig {
     std::vector<double> values;
     double q;
     info_sig():L0Name(""),signalName(""),readCycle(0),values(),q(0.0){}
+    info_sig(std::string L0Name,std::string signalName,int readCycle,double q):L0Name(L0Name),signalName(signalName),readCycle(readCycle),values(),q(q){}
 };
 typedef std::vector<info_sig> allConf;
 
@@ -59,6 +60,22 @@ struct stat_pred{
 };
 typedef std::vector<stat_pred> vectPred;
 
+struct load_stat{
+    std::string sig_name;
+    double _0_50_range;
+    double _51_100_range;
+    double _101_150_range;
+    double _151_200_range;
+    double _201_250_range;
+    double _251_300_range;
+    double _301_350_range;
+    double _351_400_range;
+    double _401_450_range;
+    double _451_500_range;
+    load_stat():sig_name(""),_0_50_range(0),_51_100_range(0),_101_150_range(0),_151_200_range(0),_201_250_range(0),_251_300_range(0),_301_350_range(0),_351_400_range(0),_401_450_range(0),_451_500_range(0){}
+};
+typedef std::vector<load_stat> vectLoadStat;
+
 struct Predictors{
     vectPred fan_pred;
 
@@ -72,14 +89,15 @@ typedef std::vector<double> total_dist_vect;
 allConf create_DB(void);
 void ecriture_thread(const allConf&);
 int ecriture(const info_sig&);
-void delete_stuff(std::string&);
+void delete_stuff(void);
 void sparse_db(std::ifstream&,allConf&);
 allConf first_steps(void);
 void make_predictor_steps(const allConf&);
-allConf filtering_db(const allConf&);
-void save_and_plot_predictors(const vectPred&,const allConf&);
+allConf db_filtering(const allConf&,const std::string&);
+void save_and_plot_fan_predictors(const vectPred&,const allConf&);
+void save_and_plot_load_pred (const vectLoadStat&);
 void fan_prediction(const allConf&);
-void temp_motor_prediction(const allConf&);
+void load_motor_prediction(const allConf&);
 int active_db_ecriture(const info_active_sig&);
 void active_db_ecriture_thread(const allConf_active&);
 void create_prediction_dir(void);
