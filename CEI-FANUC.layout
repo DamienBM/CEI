@@ -4,29 +4,38 @@
 	<ActiveTarget name="Debug" />
 	<File name="main.cpp" open="1" top="1" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1175" topLine="9" />
+			<Cursor1 position="1329" topLine="4" />
 		</Cursor>
 		<Folding>
-			<Collapse line="55" />
-			<Collapse line="96" />
-			<Collapse line="106" />
-			<Collapse line="128" />
-			<Collapse line="160" />
-			<Collapse line="264" />
-			<Collapse line="326" />
-			<Collapse line="357" />
-			<Collapse line="409" />
-			<Collapse line="481" />
-			<Collapse line="526" />
-			<Collapse line="572" />
-			<Collapse line="588" />
-			<Collapse line="618" />
-			<Collapse line="630" />
+			<Collapse line="46" />
+			<Collapse line="87" />
+			<Collapse line="97" />
+			<Collapse line="119" />
+			<Collapse line="151" />
+			<Collapse line="255" />
+			<Collapse line="317" />
+			<Collapse line="348" />
+			<Collapse line="399" />
+			<Collapse line="469" />
+			<Collapse line="514" />
+			<Collapse line="559" />
+			<Collapse line="575" />
+			<Collapse line="652" />
+			<Collapse line="686" />
+			<Collapse line="696" />
+			<Collapse line="742" />
+			<Collapse line="772" />
+			<Collapse line="789" />
+			<Collapse line="806" />
+			<Collapse line="865" />
+			<Collapse line="884" />
+			<Collapse line="917" />
+			<Collapse line="927" />
 		</Folding>
 	</File>
 	<File name="header.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1901" topLine="53" />
+			<Cursor1 position="2874" topLine="77" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>

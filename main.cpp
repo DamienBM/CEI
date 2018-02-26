@@ -22,9 +22,8 @@ V6 : séparation du code en plusieurs morceaux selon schéma ci-après
        OK    =>      OK     => done  -> fan_pred with gaussian model : thresh = (µ-3*sigma) ;
                                      -> calculate distance with CSV file from Servo Viewer ;
                                      -> Load histogram ;
-                               to do -> temp_pred, rotation_pred, ...
-
-A venir ....
+                                     -> calculate drilling cycle by auto-correlation with CSV file from Servo Viewer ;
+                               TO DO -> temp_pred, rotation_pred, ...
 
 V7 : Lire en continu L1Signal_Pool_Active pour avoir une image à l'instant T des signaux afin de pouvoir faire de la prédiction "en continu"
 
@@ -35,14 +34,6 @@ int main(int argc, char** argv)
     allConf db = first_steps(); /** Do the first steps : DB => SPARSE DB => OUT DATA **/
 
     make_predictor_steps(db); /** Do the predictors construction steps **/
-
-    /*csv_filename csv_files = get_csv_files();
-    all_dist axes = read_csv_files(csv_files);
-    total_dist_vect dist_axes = calculate_dist(axes[0],axes[1]);
-
-    std::cout.precision(10);
-    std::cout << "distance sur X : " << dist_axes[0]/100 << "m et sur Y : " << dist_axes[1]/100 << "m" << std::endl;
-    std::cout << "en 2.77 heures (9999900 msec)" << std::endl;*/
 
     PAUSE
 
@@ -357,19 +348,18 @@ allConf db_filtering(const allConf& db,const std::string& filt){
 
 void save_and_plot_fan_predictors(const vectPred& pred_fan,const allConf& db_fan){
     /** SAVE THE PREDICTOR IN A TXT FILE  FROM VECTOR PRED_FAN**/
-    std::string cur_dir = _getcwd(NULL,0);
-    using namespace std::chrono_literals;//enable to write 10ms or 1s
+    //using namespace std::chrono_literals;//enable to write 10ms or 1s
 
     /** Create directory for pred*.txt files **/
-    std::string tmp_mkdir("mkdir " + cur_dir + "\\pred\\pred_fan");
+    std::string tmp_mkdir("mkdir " + CUR_DIR + "\\pred\\pred_fan");
     if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
-        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\pred\\pred_fan";
+        tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\pred\\pred_fan";
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
     }
 
-    std::string filename(cur_dir+"\\pred\\pred_fan\\pred_fan.txt");
+    std::string filename(CUR_DIR+"\\pred\\pred_fan\\pred_fan.txt");
     std::ofstream fichier(filename, std::ios::out|std::ios::trunc);
 
     if(fichier){
@@ -382,7 +372,7 @@ void save_and_plot_fan_predictors(const vectPred& pred_fan,const allConf& db_fan
 
     /** PLOT WITH GNUPLOT DATA AND PREDICTION THRESHOLD FOR EACH SIGNAL **/
     for(unsigned int i=0; i<db_fan.size(); ++i){
-        filename = cur_dir+"\\pred\\pred_fan\\pred_fan_"+db_fan[i].signalName+".plt";
+        filename = CUR_DIR+"\\pred\\pred_fan\\pred_fan_"+db_fan[i].signalName+".plt";
         std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
         if(gnu_file){
 
@@ -410,19 +400,17 @@ void save_and_plot_fan_predictors(const vectPred& pred_fan,const allConf& db_fan
 void save_and_plot_load_pred (const vectLoadStat& load){
 
     /** SAVE THE PREDICTOR IN A TXT FILE  FROM VECTOR PRED_FAN**/
-    std::string cur_dir = _getcwd(NULL,0);
-    using namespace std::chrono_literals;//enable to write 10ms or 1s
 
     /** Create directory for pred*.txt files **/
-    std::string tmp_mkdir("mkdir " + cur_dir + "\\pred\\pred_load");
+    std::string tmp_mkdir("mkdir " + CUR_DIR + "\\pred\\pred_load");
     if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
-        tmp_rmdir = "rmdir /s /q " + cur_dir + "\\pred\\pred_load";
+        tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\pred\\pred_load";
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
     }
 
-    std::string filename(cur_dir+"\\pred\\pred_load\\pred_load.txt");
+    std::string filename(CUR_DIR+"\\pred\\pred_load\\pred_load.txt");
     std::ofstream fichier(filename, std::ios::out|std::ios::trunc);
 
     /** TXT FILE **/
@@ -443,7 +431,7 @@ void save_and_plot_load_pred (const vectLoadStat& load){
     /** PLOT FILES **/
     for(unsigned int i=0; i<load.size(); ++i){
 
-        filename = cur_dir+"\\pred\\pred_load\\load_pred_"+load[i].sig_name+".plt";
+        filename = CUR_DIR+"\\pred\\pred_load\\load_pred_"+load[i].sig_name+".plt";
         std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
 
         if(gnu_file){
@@ -457,18 +445,18 @@ void save_and_plot_load_pred (const vectLoadStat& load){
 
 
                 if(cpt==0)       val = load[i]._0_50_range;
-                else if(cpt==1) {val = load[i]._51_100_range;  gnu_file << tmp << " " << val <<"\n";}
-                else if(cpt==2) {val = load[i]._101_150_range; gnu_file << tmp << " " << val <<"\n";}
-                else if(cpt==3) {val = load[i]._151_200_range; gnu_file << tmp << " " << val <<"\n";}
-                else if(cpt==4) {val = load[i]._201_250_range; gnu_file << tmp << " " << val <<"\n";}
-                else if(cpt==5) {val = load[i]._251_300_range; gnu_file << tmp << " " << val <<"\n";}
-                else if(cpt==6) {val = load[i]._301_350_range; gnu_file << tmp << " " << val <<"\n";}
-                else if(cpt==7) {val = load[i]._351_400_range; gnu_file << tmp << " " << val <<"\n";}
-                else if(cpt==8) {val = load[i]._401_450_range; gnu_file << tmp << " " << val <<"\n";}
-                else            {val = load[i]._451_500_range; gnu_file << tmp << " " << val <<"\n";}
+                else if(cpt==1) {val = load[i]._51_100_range;  gnu_file << tmp << " " << val << "\n";}
+                else if(cpt==2) {val = load[i]._101_150_range; gnu_file << tmp << " " << val << "\n";}
+                else if(cpt==3) {val = load[i]._151_200_range; gnu_file << tmp << " " << val << "\n";}
+                else if(cpt==4) {val = load[i]._201_250_range; gnu_file << tmp << " " << val << "\n";}
+                else if(cpt==5) {val = load[i]._251_300_range; gnu_file << tmp << " " << val << "\n";}
+                else if(cpt==6) {val = load[i]._301_350_range; gnu_file << tmp << " " << val << "\n";}
+                else if(cpt==7) {val = load[i]._351_400_range; gnu_file << tmp << " " << val << "\n";}
+                else if(cpt==8) {val = load[i]._401_450_range; gnu_file << tmp << " " << val << "\n";}
+                else            {val = load[i]._451_500_range; gnu_file << tmp << " " << val << "\n";}
 
                 for(unsigned int j=1+tmp; j<50+tmp+1; ++j)
-                    gnu_file << j << " " << val <<"\n";
+                    gnu_file << j << " " << val << "\n";
             }
 
             gnu_file.close();
@@ -536,7 +524,6 @@ void load_motor_prediction(const allConf& db){
     for(unsigned int i=0;i<db_load.size();++i){
         dummy.sig_name = db_load[i].signalName;
         double sum = db_load[i].values.size();
-        std::cout << "sum = " << sum << " of signal : " << dummy.sig_name << std::endl;
         std::for_each(std::begin(db_load[i].values),std::end(db_load[i].values),[&dummy,&sum](const double val){
                         if(val<=50)       dummy._0_50_range++;
                         else if(val<=100) dummy._51_100_range++;
@@ -570,23 +557,100 @@ void load_motor_prediction(const allConf& db){
     save_and_plot_load_pred(load);
 }
 
-std::vector<double> calculate_dist(std::vector<double> x, std::vector <double>y){
+std::vector<double> calculate_dist(const all_dist& axes){
 
-    std::vector<double> dist;
-    double dist_x=0;
-    double dist_y=0;
-    double old_val_x=x[0],old_val_y=y[0];
+    std::vector<double> all_dist;
 
-    std::for_each(x.begin()+1,x.end(),[&dist_x,&old_val_x](const double val){ dist_x += std::fabs(val-old_val_x); old_val_x = val;});
-    std::for_each(y.begin()+1,y.end(),[&dist_y,&old_val_y](const double val){ dist_y += std::fabs(val-old_val_y); old_val_y = val;});
 
-    dist.push_back(dist_x);
-    dist.push_back(dist_y);
+    for(auto& axe : axes){
+        double dist=0;
+        double old_val=axe[0];
 
-    return dist;
+        std::for_each(axe.begin()+1,axe.end(),[&dist,&old_val](const double val){ dist += std::fabs(val-old_val); old_val = val;});
+
+        all_dist.push_back(dist);
+    }
+    return all_dist;
 }
 
-std::vector<std::vector<double>> read_csv_files(std::vector<std::string> files){
+std::vector<double> get_periode(const all_dist& axes, const double& Te_servo){
+
+    std::vector<std::vector<double>> all_auto_corr;
+    std::vector<double> res_tmp;
+
+    //Normalize the signal maybe ???
+
+    /** AUTCO-CORRELATION **/
+    for(auto& axe : axes){
+        res_tmp.resize(axe.size());
+        double val=0;
+		for (unsigned int k = 0; k<axe.size();k++){
+            for(unsigned int i = k; i<axe.size();i++){
+                val += axe[i] * axe[i-k];
+            }
+            res_tmp[k] = val/axe.size();
+            val = 0;
+		}
+		all_auto_corr.push_back(res_tmp);
+    }
+
+    /** CREATE FILE FOR PLOTTING **/
+    std::string tmp_mkdir("mkdir " + CUR_DIR + "\\pred\\dist");
+    if( system(tmp_mkdir.c_str()) ){
+        std::string tmp_rmdir("");
+        tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\pred\\dist";
+        system(tmp_rmdir.c_str());
+        system(tmp_mkdir.c_str());
+    }
+    unsigned num_axe=0;
+
+    std::vector<double> thresh;
+    /** PLOT WITH GNUPLOT DATA AND PREDICTION THRESHOLD FOR EACH SIGNAL **/
+    for(auto& auto_cor : all_auto_corr){
+        std::string filename = CUR_DIR+"\\pred\\dist\\auto_corr_axe_"+std::to_string(num_axe)+".plt";
+        std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
+
+        if(gnu_file){
+
+            gnu_file << "set title \"Auto-correlation of axes number "<< num_axe <<"\"\n"
+                     << "set xlabel \"Tau\"\n" << "set ylabel \"Amplitude\"\n"
+                     << "plot '-' using 1:2 title \"auto-corr\" lc rgb '#0000ff' with lines\n";
+
+            unsigned int cpt=0;
+            double _max=0;
+            std::for_each(std::begin(auto_cor),std::end(auto_cor),[&_max,&gnu_file,&cpt](const double val){if(val>_max) _max=val;
+                                                                                                          gnu_file << cpt++ << " " << val << "\n";
+                                                                                                         });
+            thresh.push_back(_max*2/3);
+
+            gnu_file.close();
+        }else
+            std::cout << std::endl << "Something went wrong with data file ..." << std::endl;
+        num_axe++;
+    }
+
+
+
+    /** THRESHOLDING THE AUTO-CORRELATION **/
+    std::vector<double> T_cycle_usinage;
+    for(unsigned int i=0; i<all_auto_corr.size();++i){ // auto_cor is a vector of double
+        for(unsigned int u=0; u<all_auto_corr[i].size(); ++u){if(all_auto_corr[i][u]<thresh[i]) all_auto_corr[i][u]=0;} //value under thresh are equal to zero from here
+        for(unsigned int id = 1; id<all_auto_corr[i].size()-1; ++id){
+            if( ( (all_auto_corr[i][id] - all_auto_corr[i][id-1]) > 0 ) && ( (all_auto_corr[i][id+1] - all_auto_corr[i][id]) < 0 ) ){
+                T_cycle_usinage.push_back(id);
+                break;
+            }
+        }
+        // got all peak id from here
+
+        for(auto& To : T_cycle_usinage) To = To*Te_servo/1000.0;
+
+    }
+
+    return T_cycle_usinage;
+}
+
+std::vector<std::vector<double>> read_csv_files(std::vector<std::string> files,double& Te_servo){
 
     std::vector<std::vector<double>> X_Y;
     std::vector<double> X,Y;
@@ -595,18 +659,22 @@ std::vector<std::vector<double>> read_csv_files(std::vector<std::string> files){
 
         std::ifstream fichier(file);
         if(fichier){
-            std::cout << "file okay !" << std::endl;
             /** TO DO  GET X AND Y POS**/
             std::string line;
             std::getline(fichier,line);
             std::getline(fichier,line);
             std::getline(fichier,line);
             std::getline(fichier,line);
+            int Te_line = 4; // sixth line
             while(std::getline(fichier,line)){
+                if(Te_line<6) Te_line++;
+                std::cout.precision(10);
                 char* ptr = strtok((char*)line.c_str(),",");
                 ptr = strtok(NULL,",");
+                if(Te_line == 6) {Te_servo = std::atof(ptr);Te_line++;}
                 X.push_back(std::atof(strtok(NULL,",")));
                 Y.push_back(std::atof(strtok(NULL,",")));
+
             }
         }else
             std::cout << "Something went wrong when opening CSV file " << file << std::endl;
@@ -620,10 +688,8 @@ std::vector<std::string> get_csv_files(void){
 
     boost::filesystem::path target(CUR_DIR+"\\CSV");
     std::vector<std::string> test;
-    for( auto& p : boost::filesystem::directory_iterator( target ) ){
+    for( auto& p : boost::filesystem::directory_iterator( target ) )
         test.push_back(p.path().string()); //test is the std::string filename
-        std::cout << p.path().string() << std::endl;
-    }
 
     return test;
 }
@@ -639,14 +705,34 @@ void make_predictor_steps(const allConf& db){ /** Out a predictor object in a fi
     std::thread th_fan(fan_prediction,std::cref(db)); /** std::ref car besoin d'une référence pour fan_prediction**/
 
     /** STEP 2 (Thread 2) : Temp Motor **/
-    std::thread load_temp(load_motor_prediction,std::cref(db));
+    std::thread th_load(load_motor_prediction,std::cref(db));
 
     /** Join of each thread **/
     th_fan.join();
-    load_temp.join();
-    t2 = clock();
+    th_load.join();
 
     std::cout << std::endl << "Temps d'execution des etapes de prediction : " << ((float)(t2-t1)/CLOCKS_PER_SEC) << std::endl;
+    t1 = clock();
+
+    /** CSV FILES PART **/
+    double Te_servo=0;
+    csv_filename csv_files = get_csv_files();
+    all_dist axes = read_csv_files(csv_files,Te_servo);
+    total_dist_vect dist_axes = calculate_dist(std::cref(axes));
+    std::vector<double> periode_usinage = get_periode(std::cref(axes),Te_servo);
+
+    std::cout.precision(10);
+    std::cout << "distance sur X : " << dist_axes[0]/10000 << " m et sur Y : " << dist_axes[1]/10000 << " m" << std::endl;
+    std::cout << "en 2.01 heures (7239.4 sec)" << std::endl;
+
+    double T_cycle_max=0;
+    for_each(std::begin(periode_usinage),std::end(periode_usinage),[&T_cycle_max](const double val){if(val>T_cycle_max)T_cycle_max=val;});
+
+    std::cout << std::endl << "T_cycle_usinage = " << T_cycle_max << " sec." << std::endl;
+
+    t2 = clock();
+
+    std::cout << std::endl << "Temps d'execution des etapes de CSV : " << ((float)(t2-t1)/CLOCKS_PER_SEC) << std::endl;
 }
 
 /** END PREDICTORS CONSTRUCTION STEPS FUNCTIONS **/

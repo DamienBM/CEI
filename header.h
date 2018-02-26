@@ -105,7 +105,8 @@ Predictors load_predictors(void);
 void predict(const allConf_active&,const Predictors&);
 void get_active_db(void);
 void predictions_step(void);
-std::vector<double> calculate_dist(std::vector<double> , std::vector <double>);
+std::vector<double> calculate_dist(const all_dist&);
+std::vector<double> get_periode(const all_dist&, const double&);
 std::vector<std::string> get_csv_files(void);
-std::vector<std::vector<double>> read_csv_files(std::vector<std::string>);
+all_dist read_csv_files(std::vector<std::string>,double&);
 

@@ -2,7 +2,7 @@
 1515592207 source:c:\users\94000187\documents\cei-fanuc\main.c
 	"header.h"
 
-1519588696 c:\users\94000187\documents\cei-fanuc\header.h
+1519687123 c:\users\94000187\documents\cei-fanuc\header.h
 	<stdio.h>
 	<stdlib.h>
 	<direct.h>
@@ -24,7 +24,7 @@
 	<list>
 	<boost/filesystem.hpp>
 
-1519589132 source:c:\users\94000187\documents\cei-fanuc\main.cpp
+1519687334 source:c:\users\94000187\documents\cei-fanuc\main.cpp
 	"header.h"
 
 1504344779 c:\program files (x86)\codeblocks\mingw\include\boost\thread
