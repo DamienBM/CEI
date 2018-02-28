@@ -27,6 +27,10 @@ V6 : séparation du code en plusieurs morceaux selon schéma ci-après
 
 V7 : Lire en continu L1Signal_Pool_Active pour avoir une image à l'instant T des signaux afin de pouvoir faire de la prédiction "en continu"
 
+TO DO :
+
+V8 : Faire N fichiers CSV par Servo Viewer (1 par axe) avec : POS,SPEED,CURRENT%,CURRENT,LOAD,ERROR,??,?? (8 data max)
+
 **********************/
 
 int main(int argc, char** argv)
@@ -105,7 +109,12 @@ int ecriture(const info_sig& sig){
     std::ofstream fichier_out(file_out, std::ios::out|std::ios::trunc);
 
     if(fichier_out){
-        fichier_out << "set title \"" << sig.signalName <<"\"\n" << "set xlabel \"Indice\"\n" << "set ylabel \"Amplitude\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000'" << "\n";
+        fichier_out << "set title \"" << sig.signalName <<"\"\n" << "set xlabel \"Indice\"\n" << "set ylabel \"Amplitude\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000'" ;
+
+        if(sig.signalName.find(std::string("Pos"))!=std::string::npos) //if matche
+            fichier_out << " with lines";
+
+        fichier_out << "\n";
         for(unsigned int j = 0; j != sig.values.size(); ++j)
             fichier_out << j << " " << sig.values[j] << std::endl;
         fichier_out.close();
@@ -273,7 +282,7 @@ allConf first_steps(void){
     std::ifstream fichier;
     fichier.open(file_in, std::ios::in);
 
-    if (fichier.is_open())
+    if (fichier)
     {
         /** Sparse db and fill vector from db **/
         sparse_db(fichier,db);
@@ -286,7 +295,7 @@ allConf first_steps(void){
 
         t1 = clock();
 
-        /** Write files in out directory **/
+        /** Write files in /out directory **/
         ecriture_thread(db);
 
         t2 = clock();
@@ -363,6 +372,8 @@ void save_and_plot_fan_predictors(const vectPred& pred_fan,const allConf& db_fan
     std::ofstream fichier(filename, std::ios::out|std::ios::trunc);
 
     if(fichier){
+            fichier.precision(3);
+            fichier << std::fixed;
             fichier << "Signal Name" << " , " << "Mean Value" << " , " << "Standard deviation value" << "," << "Quantization step" << "\n";
         for(auto pred : pred_fan)
             fichier << pred.sig_name << "," << pred.mean << "," << pred.std_dev << "," << pred.q << "\n";
@@ -375,7 +386,8 @@ void save_and_plot_fan_predictors(const vectPred& pred_fan,const allConf& db_fan
         filename = CUR_DIR+"\\pred\\pred_fan\\pred_fan_"+db_fan[i].signalName+".plt";
         std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
         if(gnu_file){
-
+            gnu_file.precision(3);
+            gnu_file << std::fixed;
             gnu_file << "set title \""<< db_fan[i].signalName <<"\"\n" << "set xlabel \"Indice\"\n" << "set ylabel \"Speed (tr/min)\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000','' using 1:2 title \"thresh\" with lines lc rgb '#0000ff'" << "\n";
             unsigned int cpt = 0;
             std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt](const double val) {
@@ -415,6 +427,8 @@ void save_and_plot_load_pred (const vectLoadStat& load){
 
     /** TXT FILE **/
     if(fichier){
+            fichier.precision(3);
+            fichier << std::fixed;
             fichier << "Signal Name" << " , " << "0_50_range" << " , " << "51_100_range" << " , " << "101_150_range" << " , "
                     << "151_200_range" << " , " << "201_250_range" << " , " << "251_300_range" << " , " << "301_350_range" << " , "
                     << "351_400_range" << " , " << "401_450_range" << " , " << "451_500_range"
@@ -435,7 +449,8 @@ void save_and_plot_load_pred (const vectLoadStat& load){
         std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
 
         if(gnu_file){
-
+            gnu_file.precision(3);
+            gnu_file << std::fixed;
             gnu_file << "set title \""<< load[i].sig_name <<"\"\n"
                      << "set xlabel \"Load (stack of 50)\"\n" << "set ylabel \"Number of times per range / Total number of times (%)\"\n"
                      << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
@@ -557,10 +572,9 @@ void load_motor_prediction(const allConf& db){
     save_and_plot_load_pred(load);
 }
 
-std::vector<double> calculate_dist(const all_dist& axes){
+total_dist_vect calculate_dist(const all_dist& axes){
 
-    std::vector<double> all_dist;
-
+    std::vector<double> all_distance;
 
     for(auto& axe : axes){
         double dist=0;
@@ -568,17 +582,18 @@ std::vector<double> calculate_dist(const all_dist& axes){
 
         std::for_each(axe.begin()+1,axe.end(),[&dist,&old_val](const double val){ dist += std::fabs(val-old_val); old_val = val;});
 
-        all_dist.push_back(dist);
+        all_distance.push_back(dist);
     }
-    return all_dist;
+
+    for(auto& axe : all_distance) axe = axe/1000.0; //convert mm to meter
+
+    return all_distance;
 }
 
-std::vector<double> get_periode(const all_dist& axes, const double& Te_servo){
+double get_periode(const all_dist& axes, const double& Te_servo){
 
     std::vector<std::vector<double>> all_auto_corr;
     std::vector<double> res_tmp;
-
-    //Normalize the signal maybe ???
 
     /** AUTCO-CORRELATION **/
     for(auto& axe : axes){
@@ -629,14 +644,12 @@ std::vector<double> get_periode(const all_dist& axes, const double& Te_servo){
         num_axe++;
     }
 
-
-
     /** THRESHOLDING THE AUTO-CORRELATION **/
     std::vector<double> T_cycle_usinage;
     for(unsigned int i=0; i<all_auto_corr.size();++i){ // auto_cor is a vector of double
         for(unsigned int u=0; u<all_auto_corr[i].size(); ++u){if(all_auto_corr[i][u]<thresh[i]) all_auto_corr[i][u]=0;} //value under thresh are equal to zero from here
         for(unsigned int id = 1; id<all_auto_corr[i].size()-1; ++id){
-            if( ( (all_auto_corr[i][id] - all_auto_corr[i][id-1]) > 0 ) && ( (all_auto_corr[i][id+1] - all_auto_corr[i][id]) < 0 ) ){
+            if( ( (all_auto_corr[i][id] - all_auto_corr[i][id-1]) > 0 ) && ( (all_auto_corr[i][id+1] - all_auto_corr[i][id]) <= 0 ) ){
                 T_cycle_usinage.push_back(id);
                 break;
             }
@@ -646,11 +659,59 @@ std::vector<double> get_periode(const all_dist& axes, const double& Te_servo){
         for(auto& To : T_cycle_usinage) To = To*Te_servo/1000.0;
 
     }
+    double To;
+    for_each(std::begin(T_cycle_usinage),std::end(T_cycle_usinage),[&To](const double val){if(val>To)To=val;});
 
-    return T_cycle_usinage;
+    return To;
 }
 
-std::vector<std::vector<double>> read_csv_files(std::vector<std::string> files,double& Te_servo){
+void save_axes_stats(const total_dist_vect& all_axes_total_dist, const double& To){
+
+    std::string filename(CUR_DIR+"\\pred\\dist\\axes_en_metre.txt");
+    std::ofstream file(filename,std::ios::out|std::ios::trunc);
+
+    if(file){
+        file.precision(3);
+        file << std::fixed;
+        file << "T0 usinage " << To << "\n";
+
+        unsigned int num_axe=0;
+        for(auto& axe_total_dist : all_axes_total_dist)
+            file << "axe " << num_axe++ << ", total dist : " << axe_total_dist << "\n";
+
+        file.close();
+    }else
+        std::cout << "Something went wrong during the saving of axes stats ..." << std::endl;
+}
+
+machining_info get_all_axes_info(const allConf& db){ /** Without Servo Viewer, only MTLINKi **/
+
+    /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
+    const std::string mcn = "Mcn";
+    allConf db_pos = db_filtering(std::cref(db),mcn);
+
+    /** FOR ALL AXES, CALCULATE THE TOTAL DIST AND THE CYCLE TIME**/
+
+    machining_info machine_info;
+
+    all_dist all_axes_value;
+    std::vector<double> dum;
+
+    for(auto& sig : db_pos){all_axes_value.push_back(sig.values);} // construct all_axes_value in order to use it in get_periode
+
+    /** FIRST, CALCULATE THE CYCLE TIME **/
+    machine_info.To = get_periode(std::cref(all_axes_value),db_pos[0].readCycle);
+
+    /** THEN, CALCULATE THE TOTAL DISTANCE **/
+    machine_info.vect_dist = calculate_dist(std::cref(all_axes_value));
+
+    /** AFTER ALL, SAVE AXES INFORMATION **/
+    save_axes_stats(std::cref(machine_info.vect_dist),std::cref(machine_info.To));
+
+    return machine_info;
+}
+
+all_dist read_csv_files(std::vector<std::string> files,double& Te_servo){ /** Without MTLINKi, only Servo Viewer **/
 
     std::vector<std::vector<double>> X_Y;
     std::vector<double> X,Y;
@@ -684,7 +745,7 @@ std::vector<std::vector<double>> read_csv_files(std::vector<std::string> files,d
     return X_Y;
 }
 
-std::vector<std::string> get_csv_files(void){
+std::vector<std::string> get_csv_files(void){ /** Without MTLINKi, only Servo Viewer **/
 
     boost::filesystem::path target(CUR_DIR+"\\CSV");
     std::vector<std::string> test;
@@ -707,28 +768,43 @@ void make_predictor_steps(const allConf& db){ /** Out a predictor object in a fi
     /** STEP 2 (Thread 2) : Temp Motor **/
     std::thread th_load(load_motor_prediction,std::cref(db));
 
-    /** Join of each thread **/
+    /** STEP 3 (Thread 3) : Axes total dist and Machining cycle**/
+    std::packaged_task<machining_info()> th_dist_axes(std::bind(get_all_axes_info,std::cref(db)));
+    std::future<machining_info> res = th_dist_axes.get_future();
+    std::thread(std::move(th_dist_axes)).detach(); //detach the thread so it's no longer useful to join() it. Only get() is useful here
+
+    /** join() or get() of each thread **/
     th_fan.join();
     th_load.join();
+    machining_info mcn_info = res.get(); //wait until the result is available
+
+    t2 = clock();
 
     std::cout << std::endl << "Temps d'execution des etapes de prediction : " << ((float)(t2-t1)/CLOCKS_PER_SEC) << std::endl;
     t1 = clock();
 
+    PAUSE
+
+    std::cout.precision(3);
+    std::cout << std::fixed;
+    std::cout << "distance sur X : " << mcn_info.vect_dist[0] << " m et sur Y : " << mcn_info.vect_dist[1] << " m" << std::endl;
+
+    std::cout << std::endl << "T_cycle_usinage = " << mcn_info.To << " sec." << std::endl;
+
     /** CSV FILES PART **/
-    double Te_servo=0;
+    /*double Te_servo=0;
     csv_filename csv_files = get_csv_files();
     all_dist axes = read_csv_files(csv_files,Te_servo);
     total_dist_vect dist_axes = calculate_dist(std::cref(axes));
-    std::vector<double> periode_usinage = get_periode(std::cref(axes),Te_servo);
+    double periode_usinage = get_periode(std::cref(axes),Te_servo);
 
-    std::cout.precision(10);
-    std::cout << "distance sur X : " << dist_axes[0]/10000 << " m et sur Y : " << dist_axes[1]/10000 << " m" << std::endl;
-    std::cout << "en 2.01 heures (7239.4 sec)" << std::endl;
+    save_axes_stats(std::cref(dist_axes),periode_usinage);
 
-    double T_cycle_max=0;
-    for_each(std::begin(periode_usinage),std::end(periode_usinage),[&T_cycle_max](const double val){if(val>T_cycle_max)T_cycle_max=val;});
+    std::cout.precision(3);
+    std::cout << std::fixed;
+    std::cout << "distance sur X : " << dist_axes[0] << " m et sur Y : " << dist_axes[1] << " m" << std::endl;
 
-    std::cout << std::endl << "T_cycle_usinage = " << T_cycle_max << " sec." << std::endl;
+    std::cout << std::endl << "T_cycle_usinage = " << periode_usinage << " sec." << std::endl;*/
 
     t2 = clock();
 
@@ -778,7 +854,7 @@ void predict(const allConf_active& active_db,const Predictors& predictors){
         for(auto& active_signal : active_db){
             if(active_signal.signalName == pred_fan.sig_name)
             {
-                if(active_signal.value < (pred_fan.mean-2*pred_fan.std_dev))
+                if(active_signal.value < (pred_fan.mean-3*pred_fan.std_dev))
                     std::cout << std::endl << " Warning , signal : " << active_signal.signalName << " has a current value under the threshold !" << std::endl
                               << " At time : " << active_signal.time1 << ":" << active_signal.time2 << ":" << active_signal.time3 << std::endl;
                 break;

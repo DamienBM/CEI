@@ -86,6 +86,14 @@ typedef std::vector<std::string> csv_filename;
 typedef std::vector<std::vector<double>> all_dist;
 typedef std::vector<double> total_dist_vect;
 
+struct machining_info{
+
+    double To;
+    total_dist_vect vect_dist;
+    machining_info():To(0.0),vect_dist(){}
+
+};
+
 allConf create_DB(void);
 void ecriture_thread(const allConf&);
 int ecriture(const info_sig&);
@@ -105,8 +113,10 @@ Predictors load_predictors(void);
 void predict(const allConf_active&,const Predictors&);
 void get_active_db(void);
 void predictions_step(void);
-std::vector<double> calculate_dist(const all_dist&);
-std::vector<double> get_periode(const all_dist&, const double&);
+total_dist_vect calculate_dist(const all_dist&);
+double get_periode(const all_dist&, const double&);
+void save_axes_stats(const total_dist_vect&, const double&);
 std::vector<std::string> get_csv_files(void);
 all_dist read_csv_files(std::vector<std::string>,double&);
+machining_info get_all_axes_info(const allConf&);
 
