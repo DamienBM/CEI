@@ -2,29 +2,11 @@
 1515592207 source:c:\users\94000187\documents\cei-fanuc\main.c
 	"header.h"
 
-1519824661 c:\users\94000187\documents\cei-fanuc\header.h
-	<stdio.h>
-	<stdlib.h>
-	<direct.h>
-	<time.h>
-	<string>
-	<vector>
-	<iostream>
-	<fstream>
-	<sstream>
-	<cstring>
-	<cstdlib>
-	<thread>
-	<future>
-	<numeric>
-	<cmath>
-	<algorithm>
-	<functional>
-	<chrono>
-	<list>
-	<boost/filesystem.hpp>
+1519940707 c:\users\94000187\documents\cei-fanuc\header.h
+	<librairie.h>
+	<db_step.h>
 
-1519830626 source:c:\users\94000187\documents\cei-fanuc\main.cpp
+1519940373 source:c:\users\94000187\documents\cei-fanuc\main.cpp
 	"header.h"
 
 1504344779 c:\program files (x86)\codeblocks\mingw\include\boost\thread
@@ -3275,4 +3257,34 @@
 	<fstream>
 	<boost/config/abi_prefix.hpp>
 	<boost/config/abi_suffix.hpp>
+
+1519940338 source:c:\users\94000187\documents\cei-fanuc\db_step.cpp
+	<db_step.h>
+
+1519941084 source:c:\users\94000187\documents\cei-fanuc\prediction_step.cpp
+	<prediction_step.h>
+
+1519940338 source:c:\users\94000187\documents\cei-fanuc\sources\db_step.cpp
+	<db_step.h>
+
+1519941296 source:c:\users\94000187\documents\cei-fanuc\sources\main.cpp
+	"header.h"
+
+1519941084 source:c:\users\94000187\documents\cei-fanuc\sources\prediction_step.cpp
+	<prediction_step.h>
+
+1519941147 source:c:\users\94000187\documents\cei-fanuc\sources\predictor_construction_step.cpp
+	<predictor_construction_step.h>
+
+1482371938 source:c:\users\94000187\documents\cei-fanuc\sources\svm.cpp
+	<math.h>
+	<stdio.h>
+	<stdlib.h>
+	<ctype.h>
+	<float.h>
+	<string.h>
+	<stdarg.h>
+	<limits.h>
+	<locale.h>
+	"svm.h"
 
