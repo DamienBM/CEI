@@ -26,7 +26,7 @@
 #define CUR_DIR std::string(_getcwd(NULL,0))
 #define ACTIVE_SIGNALS_FILE std::string("MTLINKi_Active_Signals.txt")
 #define RATED_TORQUE_SERVO 8.0 //Nm
-#define RATED_POWER_OUTPUT_SPDL 4 //kW
+#define RATED_POWER_OUTPUT_SPDL 5.5 //kW
 #define NB_VAL_POTAR_OVR 21
 #define TAILLE_STACK_POTAR_OVR 10
 #define LOAD_MAX 500

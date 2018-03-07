@@ -59,23 +59,21 @@ void save_and_plot_fan_predictors(const vectPred& pred_fan, const allConf& db_fa
             gnu_file.precision(3);
             gnu_file << std::fixed;
             gnu_file << "set title \""<< db_fan[i].signalName <<"\"\n" << "set xlabel \"Indice\"\n" << "set ylabel \"Speed (tr/min)\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000','' using 1:2 title \"thresh\" with lines lc rgb '#0000ff'" << "\n";
-            unsigned int cpt = 0;
+            double cpt = 0;
             std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt](const double val) {
-                gnu_file << cpt++ << " " << val << "\n";
+                gnu_file << cpt << " " << val << "\n";
+                cpt+=0.5;
             });
             cpt=0;
             double thresh = pred_fan[i].mean - 3*pred_fan[i].std_dev; // µ-3*sigma car P( X > µ-3*sigma) = 0.9985 (avec sigma = sigma_data + q)
             gnu_file << "e" << "\n";
             std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt,&thresh](const double val) {
-                gnu_file << cpt++ << " " << thresh << "\n";
+                gnu_file << cpt << " " << thresh << "\n";
+                cpt+=0.5;
             });
             gnu_file.close();
         }else
             std::cout << std::endl << "Something went wrong with fan gnuplot data file ..." << std::endl;
-
-        /** APPEL SYSTEM PAR THREAD DETACHED MAIS PRG ATTEND QUE LES THREADS SOIENT FERMES POUR QUITTER NORMALEMENT LE MAIN **/
-        /*std::thread([&filename](){std::string cmd("wgnuplot -persist "+filename);system(cmd.c_str());}).detach();
-        std::this_thread::sleep_for(1ms);*/ // for temporisation otherwise it crashes !
     }
 }
 
@@ -121,10 +119,11 @@ void save_and_plot_load_pred (const vectLoadStat& load){
             gnu_file << "set title \""<< load[i].sig_name <<"\"\n"
                      << "set xlabel \"Load (stack of "<< TAILLE_STACK <<")\"\n" << "set ylabel \"Number of times per range / Total number of times (%)\"\n"
                      << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
-            unsigned int k=0;
-            std::for_each(std::begin(load[i].range),std::end(load[i].range),[&gnu_file,&k](const int val){gnu_file << k++ << " " << val << "\n";
-                                                                                                          for(; k%TAILLE_STACK!=0; ++k)
-                                                                                                             gnu_file << k << " " << val << "\n";
+            double h=0;
+            std::for_each(std::begin(load[i].range),std::end(load[i].range),[&gnu_file,&h](const int val){gnu_file << h << " " << val << "\n";
+                                                                                                          h+=0.5;
+                                                                                                          for(; ((int)floor(h))%TAILLE_STACK!=0; h = h+0.5)
+                                                                                                             gnu_file << h << " " << val << "\n";
                                                                                                           });
 
             gnu_file.close();
@@ -253,11 +252,14 @@ machining_info speed_motor_stats(const allConf& db){
                  << "set ylabel \"Number of times per range / Total number of times (%)\"\n"
                  << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
 
-        unsigned int u=0;
-        std::for_each(std::begin(machine_info.override_sig),std::end(machine_info.override_sig),[&gnu_file_histo,&u](const int val){gnu_file_histo << u++ << " " << val << "\n";
-                                                                                                          for(;u%TAILLE_STACK_POTAR_OVR!=0;)
-                                                                                                             gnu_file_histo << u++ << " " << val << "\n";
-                                                                                                          });
+        double u=0;
+        std::for_each(std::begin(machine_info.override_sig),std::end(machine_info.override_sig),[&gnu_file_histo,&u](const int val){gnu_file_histo << u << " " << val << "\n";
+                                                                                                                                    u += 0.5;
+                                                                                                                                    for(;((int)floor(u))%TAILLE_STACK_POTAR_OVR!=0;){
+                                                                                                                                        gnu_file_histo << u << " " << val << "\n";
+                                                                                                                                        u+=0.5;
+                                                                                                                                    }
+                                                                                                                                    });
         gnu_file_histo.close();
     }else
         std::cout << std::endl << "Something went wrong with override gnuplot data file ..." << std::endl;
@@ -304,28 +306,30 @@ machining_info torque_motor_stats (const allConf& db){
     const std::string load_str = "Load";
     allConf db_torque = db_filtering(std::cref(db),load_str);
 
-    std::vector<double> dum;
-    dum.resize(db_torque.size());
+    std::vector<double> dum_mean_torque,dum_ouput_power;
 
     for(auto& sig : db_torque){
 
-        if(sig.signalName.find("Servo") != std::string::npos){
+        if(sig.signalName.find("Servo") != std::string::npos){ //servo : calcul à faire en rated torque
             double tmp;
             for(auto& val : sig.values) tmp+= (RATED_TORQUE_SERVO*val/100.0); //tmp en Nm
             tmp /= (sig.values.size());
-            dum.push_back(tmp);
+            dum_mean_torque.push_back(tmp);
         }
 
-        else{ //spindle : calcul par rated output power (à faire)
+        else{ //spindle : calcul par rated output power
             double tmp;
             for(auto& val : sig.values) tmp+= (RATED_POWER_OUTPUT_SPDL*val/100.0); //tmp en kW
             tmp /= (sig.values.size());
-            dum.push_back(tmp);
+            dum_ouput_power.push_back(tmp);
         }
-
     }
 
+    machining_info mcn_info_tmp;
+    mcn_info_tmp.mean_torque = dum_mean_torque;
+    mcn_info_tmp.mean_output_power = dum_ouput_power;
 
+    return mcn_info_tmp;
 }
 
 dist_vect calculate_dist(const all_dist& axes){
@@ -340,7 +344,6 @@ dist_vect calculate_dist(const all_dist& axes){
 
         all_distance.push_back(dist/1000.0);
     }
-
     return all_distance;
 }
 
@@ -428,9 +431,13 @@ void save_axes_stats(const machining_info& mcn_info){
 
         unsigned int num_axe=0;
         for(unsigned int i=0; i < mcn_info.cycle_dist_vect.size(); ++i)
-            file << "axe " << i << ", total dist : " << mcn_info.total_vect_dist[i]
+            file << "Servo " << i << ", total dist : " << mcn_info.total_vect_dist[i]
                  << "metre(s), dist per machining cycle : " << mcn_info.cycle_dist_vect[i]
-                 << "metre(s), number of reversal of the rotation direction : "<< mcn_info.nb_inv_per_axe[i] <<"\n";
+                 << "metre(s), number of reversal of the rotation direction : "<< mcn_info.nb_inv_per_axe[i]
+                 << ", mean torque : " << mcn_info.mean_torque[i] << " Nm"
+                 <<"\n";
+        for(unsigned int i=0; i < mcn_info.mean_output_power.size(); ++i)
+            file << "Spindle " << i << ", mean rated output :" << mcn_info.mean_output_power[i] << " kW\n";
 
         file.close();
     }else
@@ -451,7 +458,8 @@ machining_info get_all_axes_info(const allConf& db){ /** Without Servo Viewer, o
                            dum_dist.cycle_dist_vect,
                            dum_speed.nb_inv_per_axe,
                            dum_speed.override_sig,
-                           dum_torque.mean_torque);
+                           dum_torque.mean_torque,
+                           dum_torque.mean_output_power);
 
     /** AFTER ALL, SAVE AXES INFORMATION **/
     save_axes_stats(std::cref(mcn_inf));

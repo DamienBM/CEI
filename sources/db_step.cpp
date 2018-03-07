@@ -82,7 +82,7 @@ int ecriture(const info_sig& sig){
 
 void ecriture_thread(const allConf& db){
 
-    std::chrono::milliseconds span(10);
+    std::chrono::milliseconds span(1);
     unsigned int n = std::thread::hardware_concurrency(); // n threads au max en même temps
 
     std::vector<std::future<int>> tab_fut;
@@ -104,7 +104,7 @@ void ecriture_thread(const allConf& db){
         while (i < db.size()){
             for (unsigned int j = 0; j<tab_fut.size(); ++j){
                 if(tab_fut[j].wait_for(span) == std::future_status::ready){
-                    tab_fut[j] = std::async(std::launch::async,ecriture,db[i]);
+                    tab_fut[j] = std::async(std::launch::async,ecriture,std::cref(db[i]));
                     i++;
                 }
             }

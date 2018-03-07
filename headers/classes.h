@@ -53,6 +53,7 @@ typedef std::vector<std::vector<double>> all_dist;
 typedef std::vector<double> dist_vect;
 typedef std::vector<double> nb_inv_vect;
 typedef std::vector<double> mean_torque_vect;
+typedef std::vector<double> mean_output_power_vect;
 
 struct machining_info{
     double To;
@@ -60,10 +61,10 @@ struct machining_info{
     dist_vect cycle_dist_vect;
     nb_inv_vect nb_inv_per_axe;
     histo override_sig;
-    mean_torque_vect mean_torque;
+    mean_torque_vect mean_torque;//servo
+    mean_output_power_vect mean_output_power;//spindle
 
-    machining_info():To(0.0),total_vect_dist(),cycle_dist_vect(),nb_inv_per_axe(),override_sig(),mean_torque(){override_sig.reserve(NB_VAL_POTAR_OVR);}
-    machining_info(double To, dist_vect total_vect_dist,dist_vect cycle_dist_vect,nb_inv_vect nb_inv_per_axe,histo override_sig,mean_torque_vect mean_torque):
-        To(To),total_vect_dist(total_vect_dist),cycle_dist_vect(cycle_dist_vect),nb_inv_per_axe(nb_inv_per_axe),override_sig(override_sig),mean_torque(mean_torque){}
-
+    machining_info():To(0.0),total_vect_dist(),cycle_dist_vect(),nb_inv_per_axe(),override_sig(),mean_torque(),mean_output_power(0.0){}
+    machining_info(double To, dist_vect total_vect_dist,dist_vect cycle_dist_vect,nb_inv_vect nb_inv_per_axe,histo override_sig,mean_torque_vect mean_torque,mean_output_power_vect mean_output_power):
+        To(To),total_vect_dist(total_vect_dist),cycle_dist_vect(cycle_dist_vect),nb_inv_per_axe(nb_inv_per_axe),override_sig(override_sig),mean_torque(mean_torque),mean_output_power(mean_output_power){}
 };
