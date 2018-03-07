@@ -34,19 +34,11 @@ struct stat_pred{
 };
 typedef std::vector<stat_pred> vectPred;
 
+typedef std::vector<int> histo;
 struct load_stat{
     std::string sig_name;
-    double _0_50_range;
-    double _51_100_range;
-    double _101_150_range;
-    double _151_200_range;
-    double _201_250_range;
-    double _251_300_range;
-    double _301_350_range;
-    double _351_400_range;
-    double _401_450_range;
-    double _451_500_range;
-    load_stat():sig_name(""),_0_50_range(0),_51_100_range(0),_101_150_range(0),_151_200_range(0),_201_250_range(0),_251_300_range(0),_301_350_range(0),_351_400_range(0),_401_450_range(0),_451_500_range(0){}
+    histo range;
+    load_stat():sig_name(""),range(){}
 };
 typedef std::vector<load_stat> vectLoadStat;
 
@@ -59,12 +51,19 @@ struct Predictors{
 typedef std::vector<std::string> csv_filename;
 typedef std::vector<std::vector<double>> all_dist;
 typedef std::vector<double> dist_vect;
+typedef std::vector<double> nb_inv_vect;
+typedef std::vector<double> mean_torque_vect;
 
 struct machining_info{
-
     double To;
     dist_vect total_vect_dist;
     dist_vect cycle_dist_vect;
-    machining_info():To(0.0),total_vect_dist(),cycle_dist_vect(){}
+    nb_inv_vect nb_inv_per_axe;
+    histo override_sig;
+    mean_torque_vect mean_torque;
+
+    machining_info():To(0.0),total_vect_dist(),cycle_dist_vect(),nb_inv_per_axe(),override_sig(),mean_torque(){override_sig.reserve(NB_VAL_POTAR_OVR);}
+    machining_info(double To, dist_vect total_vect_dist,dist_vect cycle_dist_vect,nb_inv_vect nb_inv_per_axe,histo override_sig,mean_torque_vect mean_torque):
+        To(To),total_vect_dist(total_vect_dist),cycle_dist_vect(cycle_dist_vect),nb_inv_per_axe(nb_inv_per_axe),override_sig(override_sig),mean_torque(mean_torque){}
 
 };

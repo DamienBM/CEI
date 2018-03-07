@@ -31,14 +31,13 @@ void sparse_db(std::ifstream& fichier, allConf& db){
                     ptr = strtok(NULL,"{}$,:\"");
                     ptr = strtok(NULL,"{}$,:\"");
                     //ici ptr vaut la valeur du signal
-                    for(int nb_pts = 0; nb_pts < (timespan_msec/(it->readCycle));++nb_pts)
+                    for(unsigned long nb_pts = 0; nb_pts < (timespan_msec/(it->readCycle));++nb_pts)
                         it->values.push_back(std::atof(ptr));
                     break;
                 }
             }
 
-            while(ptr != NULL)
-                ptr = strtok(NULL,"{}$,:\"");
+            ptr = NULL;
         }
     }
 }
@@ -55,8 +54,7 @@ void delete_stuff(void){
 
 int ecriture(const info_sig& sig){
 
-    std::string cur_dir = _getcwd(NULL,0);
-    std::string path_out = cur_dir+"\\out\\";
+    std::string path_out = CUR_DIR+"\\out\\";
     std::string file_out;
 
     file_out = path_out + sig.signalName + "_TimeCycle_" + std::to_string(sig.readCycle) + ".plt";
@@ -65,11 +63,13 @@ int ecriture(const info_sig& sig){
     if(fichier_out){
         fichier_out << "set title \"" << sig.signalName <<"\"\n" << "set xlabel \"Indice\"\n" << "set ylabel \"Amplitude\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000'" ;
 
-        if(sig.signalName.find(std::string("Pos"))!=std::string::npos)
+        if(sig.signalName.find(std::string("Pos"))!=std::string::npos
+           || sig.signalName.find(std::string("Servo"))!=std::string::npos
+           || sig.signalName.find(std::string("Spindle"))!=std::string::npos)
             fichier_out << " with lines";
 
         fichier_out << "\n";
-        for(unsigned int j = 0; j != sig.values.size(); ++j)
+        for(unsigned long j = 0; j != sig.values.size(); ++j)
             fichier_out << j << " " << sig.values[j] << std::endl;
         fichier_out.close();
     }else{
@@ -82,7 +82,7 @@ int ecriture(const info_sig& sig){
 
 void ecriture_thread(const allConf& db){
 
-    std::chrono::milliseconds span(1);
+    std::chrono::milliseconds span(10);
     unsigned int n = std::thread::hardware_concurrency(); // n threads au max en même temps
 
     std::vector<std::future<int>> tab_fut;
@@ -136,14 +136,14 @@ allConf create_DB(void){
         system(tmp_mkdir.c_str());
     }
 
-    //tmp_mkdir = "mkdir " + CUR_DIR + "\\out";
+    tmp_mkdir = "mkdir " + CUR_DIR + "\\out";
     /** Créer le repertoire pour les fichiers out **/
-    /*if( system(tmp_mkdir.c_str()) ){
+    if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
         tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\out";
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
-    }*/
+    }
 
     /** Create directory for pred files **/
     tmp_mkdir = "mkdir " + CUR_DIR + "\\pred";
@@ -218,17 +218,16 @@ allConf create_DB(void){
 
 allConf first_steps(void){
 
-    float temps_read_db,temps_write_out,temps_write_db,temps_all;
-    clock_t t1, t2;
-    t1 = clock();
+    auto tDebut_all = std::chrono::high_resolution_clock::now();
+    auto tDebut = std::chrono::high_resolution_clock::now();
 
     /** CREATE DIR & REQ MONGODB & FILL THE L0NAME OF ALL SIG IN db **/
     allConf db = create_DB();
 
-    t2 = clock();
-    temps_read_db = (float)(t2-t1)/CLOCKS_PER_SEC;
-    std::cout << std::endl << "Temps lecture base de donnees : " << temps_read_db << std::endl;
-    t1 = clock();
+    auto tFin = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duree = tFin - tDebut;
+    std::cout << std::endl << "Temps lecture base de donnees : " << duree.count() << std::endl;
+    tDebut = std::chrono::high_resolution_clock::now();
 
     std::string file_in = CUR_DIR + "\\DB\\mtlinki_Signal.txt";
 
@@ -242,19 +241,19 @@ allConf first_steps(void){
 
         fichier.close(); // On ferme le fichier
 
-        t2 = clock();
-        temps_write_db = (float)(t2-t1)/CLOCKS_PER_SEC;
-        std::cout << std::endl << "Temps pour lire la base depuis fichier txt : " << temps_write_db << std::endl;
+        tFin = std::chrono::high_resolution_clock::now();
+        duree = tFin - tDebut;
+        std::cout << std::endl << "Temps pour lire la base depuis fichier txt : " << duree.count() << std::endl;
 
-        t1 = clock();
+        tDebut = std::chrono::high_resolution_clock::now();
 
         /** Write files in /out directory **/
         ecriture_thread(db);
 
-        t2 = clock();
-        temps_write_out = (float)(t2-t1)/CLOCKS_PER_SEC;
-        std::cout << std::endl << "Temps ecriture fichiers out : " << temps_write_out << std::endl;
-        t1=clock();
+        tFin = std::chrono::high_resolution_clock::now();
+        duree = tFin - tDebut;
+        std::cout << std::endl << "Temps ecriture fichiers out : " << duree.count() << std::endl;
+        tDebut = std::chrono::high_resolution_clock::now();
 
     }else
         std::cout << "Impossible d'ouvrir le fichier : mtlinki_Signal.txt" << std::endl;
@@ -264,10 +263,10 @@ allConf first_steps(void){
 
     std::cout << std::endl << "First steps completed !" << std::endl;
 
-    t2 = clock();
-    temps_all = ((float)(t2-t1)/CLOCKS_PER_SEC)+temps_read_db+temps_write_db+temps_write_out;
+    auto tFin_all = std::chrono::high_resolution_clock::now();
+    duree = tFin_all - tDebut_all;
 
-    std::cout << std::endl << "Temps d'execution des premieres etapes : " << temps_all << std::endl;
+    std::cout << std::endl << "Temps d'execution des premieres etapes : " << duree.count() << std::endl;
 
     return db;
 }

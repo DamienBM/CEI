@@ -37,7 +37,6 @@
 		<Compiler>
 			<Add option="-std=c++1z" />
 		</Compiler>
-		<Unit filename="header.h" />
 		<Unit filename="headers/FTT.h" />
 		<Unit filename="headers/classes.h" />
 		<Unit filename="headers/db_step.h" />
@@ -46,7 +45,6 @@
 		<Unit filename="headers/prediction_step.h" />
 		<Unit filename="headers/predictor_construction_step.h" />
 		<Unit filename="headers/svm.h" />
-		<Unit filename="main.cpp" />
 		<Unit filename="sources/db_step.cpp" />
 		<Unit filename="sources/main.cpp" />
 		<Unit filename="sources/prediction_step.cpp" />

@@ -12,7 +12,7 @@ Predictors load_predictors(void){ /** READ TXT FILEs FROM ALL SAVED PREDICTORS *
 
     /** LOAD FAN PRED **/
 
-    std::string file_pred(path + "\\pred_fan.txt");
+    std::string file_pred(path + "\\pred_fan\\pred_fan.txt");
     std::ifstream pred_fan_file(file_pred,std::ios::in);
     if(pred_fan_file){
         std::string chaine;
@@ -50,7 +50,6 @@ void predict(const allConf_active& active_db,const Predictors& predictors){
 }
 
 void get_active_db(void){
-
 
     /** Construction requête Mongo DB **/
     std::string active_db("\\ACTIVE_DB");
@@ -190,17 +189,25 @@ void create_prediction_dir(void){
 void predictions_step(void){
 
     create_prediction_dir(); /** CREATE ACTIVE DB DIR **/
+    auto tDebut = std::chrono::high_resolution_clock::now();
+
     get_active_db(); /** STORE ACTIVE DB **/
     allConf_active active_db = read_active_signals_file();
+
+    auto tFin = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duree = tFin - tDebut;
+    std::cout << std::endl << "Temps pour avoir active_db : " << duree.count() << " msec !" << std::endl;
     active_db_ecriture_thread(active_db);
 
     Predictors predictors = load_predictors();
-
+    PAUSE
     using namespace std::chrono_literals;//enable to write 10ms or 1s
     while(true){
         std::cout << std::endl << "Loop done !" << std::endl;
         predict(active_db,predictors);
         std::this_thread::sleep_for(500ms);
+        get_active_db();
+        active_db = read_active_signals_file();
     }
 }
 
