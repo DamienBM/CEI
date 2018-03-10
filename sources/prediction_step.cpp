@@ -34,10 +34,11 @@ Predictors load_predictors(void){ /** READ TXT FILEs FROM ALL SAVED PREDICTORS *
 
 void predict(const allConf_active& active_db,const Predictors& predictors){
 
-    /** FAN PREDICTION **/
-    for(auto& pred_fan : predictors.fan_pred){
-        //pred_fan is a fan predictor from object predictors
-        for(auto& active_signal : active_db){
+
+    for(auto& active_signal : active_db){
+        /** FAN PREDICTION **/
+        for(auto& pred_fan : predictors.fan_pred){
+            //pred_fan is a fan predictor from object predictors
             if(active_signal.signalName == pred_fan.sig_name)
             {
                 if(active_signal.value < (pred_fan.mean-3*pred_fan.std_dev))
@@ -46,7 +47,13 @@ void predict(const allConf_active& active_db,const Predictors& predictors){
                 break;
             }
         }
+        /** TEMPERATURE PREDICTION **/
+        //threshold ? Clustering ?
+        /** CLUSTERING PREDICTION **/
+        //Get predict from python txt file cluster via
     }
+
+
 }
 
 void get_active_db(void){
@@ -110,10 +117,6 @@ allConf_active read_active_signals_file(void){
 
             if(strcmp(ptr,"null")!=0){
                 dummy.value = std::atof(strtok(NULL,"{}$,:\""));
-
-                while(ptr != NULL)
-                    ptr = strtok(NULL,"{}$,:\"");
-
                 db_tmp.push_back(dummy);
             }
         }

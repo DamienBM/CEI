@@ -61,7 +61,9 @@ int ecriture(const info_sig& sig){
     std::ofstream fichier_out(file_out, std::ios::out|std::ios::trunc);
 
     if(fichier_out){
-        fichier_out << "set title \"" << sig.signalName <<"\"\n" << "set xlabel \"Indice\"\n" << "set ylabel \"Amplitude\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000'" ;
+        fichier_out.precision(3);
+        fichier_out << std::fixed;
+        fichier_out << "set title \"" << sig.signalName <<"\"\n" << "set xlabel \"Temps (msec)\"\n" << "set ylabel \"Amplitude\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000'" ;
 
         if(sig.signalName.find(std::string("Pos"))!=std::string::npos
            || sig.signalName.find(std::string("Servo"))!=std::string::npos
@@ -69,8 +71,8 @@ int ecriture(const info_sig& sig){
             fichier_out << " with lines";
 
         fichier_out << "\n";
-        for(unsigned long j = 0; j != sig.values.size(); ++j)
-            fichier_out << j << " " << sig.values[j] << std::endl;
+        for(double j = 0; j != sig.values.size(); ++j)
+            fichier_out << j*sig.readCycle << " " << sig.values[j] << std::endl;
         fichier_out.close();
     }else{
         std::cout << "Pb lors de l'ecriture des fichiers out !" << std::endl;
@@ -83,19 +85,19 @@ int ecriture(const info_sig& sig){
 void ecriture_thread(const allConf& db){
 
     std::chrono::milliseconds span(1);
-    unsigned int n = std::thread::hardware_concurrency(); // n threads au max en même temps
+    unsigned int nb_thread_max = std::thread::hardware_concurrency(); // nb threads max en même temps
 
     std::vector<std::future<int>> tab_fut;
     std::future<int> fut;
     unsigned int j = 0;
 
-    for (j = 0; j<n && j<db.size();++j){
+    for (j = 0; j<nb_thread_max && j<db.size();++j){
         //init threads here
         tab_fut.push_back(std::async(std::launch::async,ecriture,std::cref(db[j])));
     }
 
     if(j==db.size()){
-        for(unsigned int k = 0; k<n; ++k)
+        for(unsigned int k = 0; k<tab_fut.size(); ++k)
             tab_fut[k].wait();
     }
     else{

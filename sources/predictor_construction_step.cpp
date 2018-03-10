@@ -58,7 +58,7 @@ void save_and_plot_fan_predictors(const vectPred& pred_fan, const allConf& db_fa
         if(gnu_file){
             gnu_file.precision(3);
             gnu_file << std::fixed;
-            gnu_file << "set title \""<< db_fan[i].signalName <<"\"\n" << "set xlabel \"Indice\"\n" << "set ylabel \"Speed (tr/min)\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000','' using 1:2 title \"thresh\" with lines lc rgb '#0000ff'" << "\n";
+            gnu_file << "set title \""<< db_fan[i].signalName <<"\"\n" << "set xlabel \"Temps (msec)\"\n" << "set ylabel \"Speed (tr/min)\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000','' using 1:2 title \"thresh\" with lines lc rgb '#0000ff'" << "\n";
             double cpt = 0;
             std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt](const double val) {
                 gnu_file << cpt << " " << val << "\n";
@@ -119,10 +119,9 @@ void save_and_plot_load_pred (const vectLoadStat& load){
             gnu_file << "set title \""<< load[i].sig_name <<"\"\n"
                      << "set xlabel \"Load (stack of "<< TAILLE_STACK <<")\"\n" << "set ylabel \"Number of times per range / Total number of times (%)\"\n"
                      << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
-            double h=0;
-            std::for_each(std::begin(load[i].range),std::end(load[i].range),[&gnu_file,&h](const int val){gnu_file << h << " " << val << "\n";
-                                                                                                          h+=0.5;
-                                                                                                          for(; ((int)floor(h))%TAILLE_STACK!=0; h = h+0.5)
+            unsigned int h=0;
+            std::for_each(std::begin(load[i].range),std::end(load[i].range),[&gnu_file,&h](const int val){gnu_file << h++ << " " << val << "\n";
+                                                                                                          for(; h%TAILLE_STACK!=0; ++h)
                                                                                                              gnu_file << h << " " << val << "\n";
                                                                                                           });
 
@@ -135,7 +134,7 @@ void save_and_plot_load_pred (const vectLoadStat& load){
 
 }
 
-void fan_prediction(const allConf& db){
+void fan_prediction(const allConf& db){ //to evolve in threads
 
     /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
     const std::string fan = "Fan";
@@ -187,7 +186,7 @@ void fan_prediction(const allConf& db){
     save_and_plot_fan_predictors(std::cref(pred_fan),std::cref(db_filtered));
 }
 
-void load_motor_stats(const allConf& db){
+void load_motor_stats(const allConf& db){ //to evolve in threads
 
     /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
     const std::string load_str = "Load";
@@ -252,12 +251,10 @@ machining_info speed_motor_stats(const allConf& db){
                  << "set ylabel \"Number of times per range / Total number of times (%)\"\n"
                  << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
 
-        double u=0;
-        std::for_each(std::begin(machine_info.override_sig),std::end(machine_info.override_sig),[&gnu_file_histo,&u](const int val){gnu_file_histo << u << " " << val << "\n";
-                                                                                                                                    u += 0.5;
-                                                                                                                                    for(;((int)floor(u))%TAILLE_STACK_POTAR_OVR!=0;){
+        unsigned int u=0;
+        std::for_each(std::begin(machine_info.override_sig),std::end(machine_info.override_sig),[&gnu_file_histo,&u](const int val){gnu_file_histo << u++ << " " << val << "\n";
+                                                                                                                                    for(;u%TAILLE_STACK_POTAR_OVR!=0;u++){
                                                                                                                                         gnu_file_histo << u << " " << val << "\n";
-                                                                                                                                        u+=0.5;
                                                                                                                                     }
                                                                                                                                     });
         gnu_file_histo.close();
@@ -269,29 +266,30 @@ machining_info speed_motor_stats(const allConf& db){
 
 machining_info dist_stats(const allConf& db){
 
-    /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
-    const std::string mcn = "Mcn";
-    allConf db_pos = db_filtering(std::cref(db),mcn);
-
     machining_info machine_info;
     all_dist all_axes_value;
     std::vector<double> dum;
 
-    /** FOR ALL AXES, CALCULATE THE TOTAL DIST AND THE CYCLE TIME**/
-    for(auto& sig : db_pos){all_axes_value.push_back(sig.values);} // construct all_axes_value in order to use it in get_periode
+    /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
+    const std::string mcn = "McnPos";
+    allConf db_pos = db_filtering(std::cref(db),mcn);
+    for(auto& sig : db_pos) all_axes_value.push_back(std::pair(sig.signalName,sig.values));
 
-    /** FIRST, CALCULATE THE CYCLE TIME **/
+    /** FOR ALL AXES, CALCULATE THE TOTAL DIST AND THE CYCLE TIME**/
+
+    /** AND CALCULATE THE CYCLE TIME **/
     machine_info.To = get_periode(std::cref(all_axes_value),db_pos[0].readCycle);
 
-    /** THEN, CALCULATE THE TOTAL DISTANCE **/
+    /** FIRST, CALCULATE THE TOTAL DISTANCE **/
     machine_info.total_vect_dist = calculate_dist(std::cref(all_axes_value));
 
-    /** AND CACLULATE DISTANCE PER MACHINING CYCLE **/
+    /** THEN CACLULATE DISTANCE PER MACHINING CYCLE **/
     double nb_points_per_cycle = (machine_info.To*MSEC)/db_pos[0].readCycle;
     std::vector<double> dist_per_cycle;
     double dist;
 
-    for(auto& axe_values : all_axes_value){
+    for(auto& axe : all_axes_value){
+        std::vector<double> axe_values = axe.second;
         for(unsigned int i=1; i<=nb_points_per_cycle; ++i) dist += std::fabs(axe_values[i]-axe_values[i-1]);
         machine_info.cycle_dist_vect.push_back(dist/1000.0);
         dist = 0;
@@ -311,15 +309,49 @@ machining_info torque_motor_stats (const allConf& db){
     for(auto& sig : db_torque){
 
         if(sig.signalName.find("Servo") != std::string::npos){ //servo : calcul à faire en rated torque
-            double tmp;
-            for(auto& val : sig.values) tmp+= (RATED_TORQUE_SERVO*val/100.0); //tmp en Nm
+            double tmp=0;
+            double cpt=0;
+            std::string filename(CUR_DIR+"\\pred\\axes\\Torque_"+sig.signalName+".plt");
+            std::ofstream file(filename, std::ios::out|std::ios::trunc);
+            if(file){
+                file.precision(3);
+                file << std::fixed;
+                file << "set title \"Torque of : "<< sig.signalName <<"\"\n"
+                     << "set xlabel \"Time (msec)\"\n" << "set ylabel \"Torque (Nm)\"\n"
+                     << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
+            } else std::cout<< std::endl << "Something went wrong with Torque file ..." << std::endl;
+            for(auto& val : sig.values){
+                tmp += (RATED_TORQUE_SERVO*val/100.0); //tmp en Nm
+                if(file){
+                    file << cpt << " " << val << "\n";
+                    cpt += 0.5;
+                } else
+                    std::cout<< std::endl << "Something went wrong with Torque file ..." << std::endl;
+            }
             tmp /= (sig.values.size());
             dum_mean_torque.push_back(tmp);
         }
 
         else{ //spindle : calcul par rated output power
-            double tmp;
-            for(auto& val : sig.values) tmp+= (RATED_POWER_OUTPUT_SPDL*val/100.0); //tmp en kW
+            double tmp=0;
+            double cpt=0;
+            std::string filename(CUR_DIR+"\\pred\\axes\\Output_Power_"+sig.signalName+".plt");
+            std::ofstream file(filename, std::ios::out|std::ios::trunc);
+            if(file){
+                file.precision(3);
+                file << std::fixed;
+                file << "set title \"Output Power of : "<< sig.signalName <<"\"\n"
+                     << "set xlabel \"Time (msec)\"\n" << "set ylabel \"Output Power (kW)\"\n"
+                     << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
+            } else std::cout<< std::endl << "Something went wrong with Output Power file ..." << std::endl;
+            for(auto& val : sig.values){
+                tmp += (RATED_POWER_OUTPUT_SPDL*val/100.0); //tmp en kW
+                if(file){
+                    file << cpt << " " << val << "\n";
+                    cpt += 0.5;
+                } else
+                    std::cout<< std::endl << "Something went wrong with Output Power file ..." << std::endl;
+            }
             tmp /= (sig.values.size());
             dum_ouput_power.push_back(tmp);
         }
@@ -336,7 +368,8 @@ dist_vect calculate_dist(const all_dist& axes){
 
     dist_vect all_distance;
 
-    for(auto& axe : axes){
+    for(auto& tmp : axes){
+        std::vector<double> axe = tmp.second;
         double dist=0;
         double old_val=axe[0];
 
@@ -347,7 +380,7 @@ dist_vect calculate_dist(const all_dist& axes){
     return all_distance;
 }
 
-double get_periode(const all_dist& axes, const double& Te_servo){
+double get_periode(const all_dist& axes, const double& Te_servo){ //get periode with mcnpos, servospeed and servoload
 
     /** CREATE FILE FOR PLOTTING **/
     std::string tmp_mkdir("mkdir " + CUR_DIR + "\\pred\\axes");
@@ -361,12 +394,12 @@ double get_periode(const all_dist& axes, const double& Te_servo){
     std::vector<double> res_tmp;
     std::vector<double> T_cycle_usinage;
     unsigned num_axe=0;
-    bool catched=false;
     std::string filename;
 
     /** AUTCO-CORRELATION **/
-    for(auto& axe : axes){
-        filename = CUR_DIR+"\\pred\\axes\\auto_corr_axe_"+std::to_string(num_axe)+".plt";
+    for(auto& tmp : axes){
+        std::vector<double> axe = tmp.second;
+        filename = CUR_DIR+"\\pred\\axes\\auto_corr_"+ tmp.first +".plt";
         std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
         res_tmp.resize(axe.size());
         double val=0;
@@ -375,29 +408,29 @@ double get_periode(const all_dist& axes, const double& Te_servo){
         double mean = 0;
         std::for_each(axe.begin(),axe.end(),[&mean](const double val){mean+=val;});
         mean /= axe.size();
-        double sum;
-        std::for_each(axe.begin(),axe.end(),[&mean,&sum](const double val){sum+=((val-mean)*(val-mean));});
-        double var = std::sqrt(sum/(axe.size()-1));
-        catched = false;
-		for (unsigned int k = 0; k<(axe.size()/2); ++k){
-            for(unsigned int i = 0; i<axe.size();++i) val += (axe[i]-mean) * (axe[(i+k)%axe.size()]-mean);//auto-corrélation statistique pour un processus stationnaire
-            res_tmp[k] = val/var;
 
-            if(k==0){
-                val_max = val;
-                if(gnu_file){
-                    gnu_file << "set title \"Auto-correlation of axes number "<< num_axe <<"\"\n"
-                     << "set xlabel \"Tau\"\n" << "set ylabel \"Amplitude\"\n"
-                     << "plot '-' using 1:2 title \"auto-corr\" lc rgb '#0000ff' with lines\n";
-                } else
-                    std::cout << std::endl << "Something went wrong with data file ..." << std::endl;
-            }
+        if(gnu_file){
+            gnu_file << "set title \"Auto-correlation of "<< tmp.first <<"\"\n"
+             << "set xlabel \"Tau\"\n" << "set ylabel \"Amplitude\"\n"
+             << "plot '-' using 1:2 title \"auto-corr\" lc rgb '#0000ff' with lines\n";
+        } else
+            std::cout << std::endl << "Something went wrong with data file ..." << std::endl;
+        for (unsigned long k = 0; k<(axe.size()/2); ++k){
+            for(unsigned long i = k; i<axe.size();++i) val += ( (axe[i]-mean) * (axe[((i-k)/*%axe.size()*/)]-mean) );//auto-corrélation statistique pour un processus stationnaire
 
-            else if(k>=2){
-                if(val>(val_max*2/3)&&!catched){//SEUIL A DEPASSER
-                    if( ( (res_tmp[k-1] - res_tmp[k-2]) > 0 ) && ( (res_tmp[k] - res_tmp[k-1]) <= 0 ) ){
-                        T_cycle_usinage.push_back((k-1)*Te_servo/1000.0);
-                        catched=true;
+            if(k==0) val_max = val;
+
+            if(val>=0){
+                res_tmp[k] = val/val_max;
+            } else
+                res_tmp[k] = 0;
+
+            if(k>=4){
+                if(res_tmp[k-2]>THRESH_AUTOCORRELATION){ //SEUIL A DEPASSER
+                    if( ( (res_tmp[k-2] - res_tmp[k-4]) > 0 ) && ( (res_tmp[k-2] - res_tmp[k-3]) > 0 ) && ( (res_tmp[k-1] - res_tmp[k-2]) <= 0 ) && ( (res_tmp[k] - res_tmp[k-2]) <= 0 ) ){
+                        T_cycle_usinage.push_back((k-2)*Te_servo/1000.0);
+                        if(gnu_file) gnu_file << k << " " << res_tmp[k] << "\n";
+                        else std::cout << std::endl << "Something went wrong with data file ..." << std::endl;
                         break;
                     }
                 }
@@ -405,8 +438,7 @@ double get_periode(const all_dist& axes, const double& Te_servo){
 
             if(gnu_file) gnu_file << k << " " << res_tmp[k] << "\n";
             else         std::cout << std::endl << "Something went wrong with data file ..." << std::endl;
-
-            val = 0;
+            val=0;
 		}
 		num_axe++;
 		gnu_file.close();
@@ -437,7 +469,9 @@ void save_axes_stats(const machining_info& mcn_info){
                  << ", mean torque : " << mcn_info.mean_torque[i] << " Nm"
                  <<"\n";
         for(unsigned int i=0; i < mcn_info.mean_output_power.size(); ++i)
-            file << "Spindle " << i << ", mean rated output :" << mcn_info.mean_output_power[i] << " kW\n";
+            file << "Spindle " << i << ", mean rated output :" << mcn_info.mean_output_power[i] << " kW."
+                 << "Or " << mcn_info.mean_output_power[i]*100/RATED_POWER_OUTPUT_SPDL << " percent of Rated output power"
+                 <<"\n";
 
         file.close();
     }else
@@ -467,7 +501,7 @@ machining_info get_all_axes_info(const allConf& db){ /** Without Servo Viewer, o
     return mcn_inf;
 }
 
-all_dist read_csv_files(std::vector<std::string> files, double& Te_servo){ /** Without MTLINKi, only Servo Viewer **/
+std::vector<std::vector<double>> read_csv_files(std::vector<std::string> files, double& Te_servo){ /** Without MTLINKi, only Servo Viewer **/
 
     std::vector<std::vector<double>> X_Y;
     std::vector<double> X,Y;

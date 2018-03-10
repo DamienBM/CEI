@@ -25,6 +25,7 @@
 #define PAUSE system("pause");
 #define CUR_DIR std::string(_getcwd(NULL,0))
 #define ACTIVE_SIGNALS_FILE std::string("MTLINKi_Active_Signals.txt")
+#define THRESH_AUTOCORRELATION 0.75
 #define RATED_TORQUE_SERVO 8.0 //Nm
 #define RATED_POWER_OUTPUT_SPDL 5.5 //kW
 #define NB_VAL_POTAR_OVR 21

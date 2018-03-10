@@ -49,7 +49,7 @@ struct Predictors{
 };
 
 typedef std::vector<std::string> csv_filename;
-typedef std::vector<std::vector<double>> all_dist;
+typedef std::vector<std::pair<std::string,std::vector<double>>> all_dist;
 typedef std::vector<double> dist_vect;
 typedef std::vector<double> nb_inv_vect;
 typedef std::vector<double> mean_torque_vect;

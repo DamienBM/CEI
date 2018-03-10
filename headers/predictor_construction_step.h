@@ -12,7 +12,7 @@ dist_vect calculate_dist(const all_dist&);
 double get_periode(const all_dist&, const double&);
 void save_axes_stats(const machining_info&);
 std::vector<std::string> get_csv_files(void);
-all_dist read_csv_files(std::vector<std::string>,double&);
+std::vector<std::vector<double>> read_csv_files(std::vector<std::string>,double&);
 machining_info get_all_axes_info(const allConf&);
 machining_info speed_motor_stats(const allConf&);
 machining_info dist_stats(const allConf&);
