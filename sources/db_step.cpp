@@ -2,7 +2,7 @@
 
 /** GET DB STEP FUNCTIONS **/
 
-void sparse_db(std::ifstream& fichier, allConf& db){
+void sparse_db(std::ifstream& fichier, allConf& db,allAlarms& alarms){
     /** Sparse DB and fill vector from db **/
     std::string chaine;
     double timespan_msec = 0;
@@ -13,28 +13,54 @@ void sparse_db(std::ifstream& fichier, allConf& db){
 
         while(ptr != NULL){
 
-            while(strcmp(ptr,"timespan")!=0){
+            if(chaine.find("\"signalName\":\"ALARM\",\"value\":true") != std::string::npos){
+                alarm_signal alarm;
+                while(strcmp(ptr,"updatedate")!=0)ptr = strtok(NULL,"{}$,:\"");
                 ptr = strtok(NULL,"{}$,:\"");
-            }
-            timespan_msec = std::atof(strtok(NULL,"{}$,:\""))*MSEC;
+                alarm.updatedate  = strtok(NULL,"{}$,:\"");
+                alarm.updatedate += ":";
+                alarm.updatedate += strtok(NULL,"{}$,:\"");
+                alarm.updatedate += ":";
+                alarm.updatedate += strtok(NULL,"{}$,:\"");
+                alarm.updatedate.resize(alarm.updatedate.size()-1);
 
-
-            while(strcmp(ptr,"signalname")!=0){
+                while(strcmp(ptr,"enddate")!=0)ptr = strtok(NULL,"{}$,:\"");
                 ptr = strtok(NULL,"{}$,:\"");
+                alarm.enddate  = strtok(NULL,"{}$,:\"");
+                alarm.enddate += ":";
+                alarm.enddate += strtok(NULL,"{}$,:\"");
+                alarm.enddate += ":";
+                alarm.enddate += strtok(NULL,"{}$,:\"");
+                alarm.enddate.resize(alarm.enddate.size()-1);
+
+                while(strcmp(ptr,"timespan")!=0)ptr = strtok(NULL,"{}$,:\"");
+                alarm.duration = std::atof(strtok(NULL,"{}$,:\""));
+
+                alarms.push_back(alarm);
             }
 
-            ptr = strtok(NULL,"{}$,:\"");
-            //ici ptr vaut le nom du signal dans L1Signal_Pool
+            else{
 
-            for(auto it = db.begin(); it != db.end();++it){
-                if(strcmp(ptr,it->signalName.c_str())==0){
-                    ptr = strtok(NULL,"{}$,:\"");
-                    ptr = strtok(NULL,"{}$,:\"");
-                    //ici ptr vaut la valeur du signal
-                    for(unsigned long nb_pts = 0; nb_pts < (timespan_msec/(it->readCycle));++nb_pts)
-                        it->values.push_back(std::atof(ptr));
-                    break;
+                while(strcmp(ptr,"timespan")!=0)ptr = strtok(NULL,"{}$,:\"");
+                timespan_msec = std::atof(strtok(NULL,"{}$,:\""))*MSEC;
+
+                while(strcmp(ptr,"signalname")!=0)ptr = strtok(NULL,"{}$,:\"");
+
+                ptr = strtok(NULL,"{}$,:\"");
+                //ici ptr vaut le nom du signal dans L1Signal_Pool
+
+                for(auto it = db.begin(); it != db.end();++it){
+                    if(strcmp(ptr,it->signalName.c_str())==0){
+                        ptr = strtok(NULL,"{}$,:\"");
+                        ptr = strtok(NULL,"{}$,:\"");
+                        //ici ptr vaut la valeur du signal
+                        for(unsigned long nb_pts = 0; nb_pts < (timespan_msec/(it->readCycle));++nb_pts)
+                            it->values.push_back(std::atof(ptr));
+                        break;
+                    }
                 }
+
+
             }
 
             ptr = NULL;
@@ -82,7 +108,7 @@ int ecriture(const info_sig& sig){
     return 1;
 }
 
-void ecriture_thread(const allConf& db){
+void ecriture_thread(const allConf& db,const allAlarms& alarms){
 
     std::chrono::milliseconds span(1);
     unsigned int nb_thread_max = std::thread::hardware_concurrency(); // nb threads max en même temps
@@ -112,6 +138,17 @@ void ecriture_thread(const allConf& db){
             }
         }
     }
+
+    std::string filename = CUR_DIR+"\\out\\Alarms.txt";
+    std::ofstream file(filename,std::ios::out|std::ios::trunc);
+
+    for(auto& alarm: alarms) {
+        if(file) file << "Alarm From " << alarm.updatedate << " to " << alarm.enddate << ".Wether "<< alarm.duration <<" seconds.\n";
+        else     std::cout << std::endl << "Something went wrong with Alarm file ..." << std::endl;
+    }
+
+    if(file) file << "Total number of Alarm : " << alarms.size() << "\n";
+    else     std::cout << std::endl << "Something went wrong with Alarm file ..." << std::endl;
 }
 
 allConf create_DB(void){
@@ -127,7 +164,6 @@ allConf create_DB(void){
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
     }*/
-
 
     tmp_mkdir = "mkdir " + CUR_DIR + "\\batch";
     /** Créer le repertoire pour les fichiers bat **/
@@ -239,7 +275,8 @@ allConf first_steps(void){
     if (fichier)
     {
         /** Sparse db and fill vector from db **/
-        sparse_db(fichier,db);
+        allAlarms alarms;
+        sparse_db(fichier,db,alarms);
 
         fichier.close(); // On ferme le fichier
 
@@ -250,7 +287,7 @@ allConf first_steps(void){
         tDebut = std::chrono::high_resolution_clock::now();
 
         /** Write files in /out directory **/
-        ecriture_thread(db);
+        ecriture_thread(std::cref(db),std::cref(alarms));
 
         tFin = std::chrono::high_resolution_clock::now();
         duree = tFin - tDebut;

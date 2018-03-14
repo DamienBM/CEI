@@ -3264,16 +3264,16 @@
 1519941084 source:c:\users\94000187\documents\cei-fanuc\prediction_step.cpp
 	<prediction_step.h>
 
-1520678296 source:c:\users\94000187\documents\cei-fanuc\sources\db_step.cpp
+1520973691 source:c:\users\94000187\documents\cei-fanuc\sources\db_step.cpp
 	<db_step.h>
 
-1520330497 source:c:\users\94000187\documents\cei-fanuc\sources\main.cpp
+1520977055 source:c:\users\94000187\documents\cei-fanuc\sources\main.cpp
 	"header.h"
 
 1520535245 source:c:\users\94000187\documents\cei-fanuc\sources\prediction_step.cpp
 	<prediction_step.h>
 
-1520678307 source:c:\users\94000187\documents\cei-fanuc\sources\predictor_construction_step.cpp
+1520976930 source:c:\users\94000187\documents\cei-fanuc\sources\predictor_construction_step.cpp
 	<predictor_construction_step.h>
 
 1482371938 source:c:\users\94000187\documents\cei-fanuc\sources\svm.cpp
@@ -3287,4 +3287,10 @@
 	<limits.h>
 	<locale.h>
 	"svm.h"
+
+1520966033 source:c:\users\94000187\documents\cei-fanuc\sources\alarm_history.cpp
+	<alarm_history.h>
+
+1520982937 source:c:\users\94000187\documents\cei-fanuc\sources\alarme_history.cpp
+	<alarme_history.h>
 

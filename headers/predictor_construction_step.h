@@ -2,7 +2,6 @@
 
 #include <classes.h>
 
-void make_predictor_steps(const allConf&);
 allConf db_filtering(const allConf&,const std::string&);
 void save_and_plot_fan_predictors(const vectPred&,const allConf&);
 void save_and_plot_load_pred (const vectLoadStat&);
@@ -17,3 +16,4 @@ machining_info get_all_axes_info(const allConf&);
 machining_info speed_motor_stats(const allConf&);
 machining_info dist_stats(const allConf&);
 machining_info torque_motor_stats (const allConf&);
+machining_info make_predictor_steps(const allConf&);

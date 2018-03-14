@@ -36,7 +36,9 @@ int main(int argc, char** argv)
 {
     allConf db = first_steps(); /** Do the first steps : DB => SPARSE DB => OUT DATA **/
 
-    make_predictor_steps(db); /** Do the predictors construction steps **/
+    machining_info mcn_info = make_predictor_steps(db); /** Do the predictors construction steps **/
+
+    alarm_history_step(std::cref(mcn_info));
 
     PAUSE
 

@@ -13,6 +13,15 @@ struct info_sig {
 };
 typedef std::vector<info_sig> allConf;
 
+struct alarm_signal{
+    std::string updatedate;
+    std::string enddate;
+    double duration;
+
+    alarm_signal():updatedate(""),enddate(""),duration(0){}
+};
+typedef std::vector<alarm_signal> allAlarms;
+
 struct info_active_sig {
     std::string L1Name;
     std::string signalName;
@@ -67,4 +76,34 @@ struct machining_info{
     machining_info():To(0.0),total_vect_dist(),cycle_dist_vect(),nb_inv_per_axe(),override_sig(),mean_torque(),mean_output_power(0.0){}
     machining_info(double To, dist_vect total_vect_dist,dist_vect cycle_dist_vect,nb_inv_vect nb_inv_per_axe,histo override_sig,mean_torque_vect mean_torque,mean_output_power_vect mean_output_power):
         To(To),total_vect_dist(total_vect_dist),cycle_dist_vect(cycle_dist_vect),nb_inv_per_axe(nb_inv_per_axe),override_sig(override_sig),mean_torque(mean_torque),mean_output_power(mean_output_power){}
+};
+
+struct alarm_history{
+
+    std::string L1Name;
+    std::string L0Name;
+    unsigned int number;
+    std::string updatedate;
+    std::string enddate;
+    std::string message;
+    unsigned int level;
+    std::string type;
+    double timespan;
+
+    alarm_history():L1Name(""),L0Name(""),number(0),updatedate(""),enddate(""),message(""),level(0),type(""),timespan(0.0){}
+    alarm_history(const alarm_history& alarm):L1Name(alarm.L1Name),L0Name(alarm.L0Name),number(alarm.number),
+                                       updatedate(alarm.updatedate),enddate(alarm.enddate),message(alarm.message),level(alarm.level),
+                                       type(alarm.type),timespan(alarm.timespan){}
+
+};
+typedef std::vector<alarm_history> alarm_history_db;
+
+struct alarm_stats{
+
+    unsigned int number;
+    std::string message;
+    unsigned int cpt;
+
+
+
 };

@@ -1,0 +1,1 @@
+Signal Name , Mean Value , Standard deviation value,Quantization step

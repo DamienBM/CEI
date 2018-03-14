@@ -545,7 +545,7 @@ std::vector<std::string> get_csv_files(void){ /** Without MTLINKi, only Servo Vi
     return test;
 }
 
-void make_predictor_steps(const allConf& db){ /** Out a predictor object in a file : /pred/predfan,... **/
+machining_info make_predictor_steps(const allConf& db){ /** Out a predictor object in a file : /pred/predfan,... **/
 
     std::cout << std::endl << "Pred step" << std::endl;
 
@@ -600,6 +600,8 @@ void make_predictor_steps(const allConf& db){ /** Out a predictor object in a fi
     duree = tFin - tDebut;
 
     std::cout << std::endl << "Temps d'execution des etapes de CSV : " << duree.count() << std::endl;
+
+    return mcn_info;
 }
 
 /** END PREDICTORS CONSTRUCTION STEPS FUNCTIONS **/
