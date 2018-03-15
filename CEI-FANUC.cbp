@@ -45,12 +45,14 @@
 		<Unit filename="headers/librairie.h" />
 		<Unit filename="headers/prediction_step.h" />
 		<Unit filename="headers/predictor_construction_step.h" />
+		<Unit filename="headers/script_python.h" />
 		<Unit filename="headers/svm.h" />
 		<Unit filename="sources/alarme_history.cpp" />
 		<Unit filename="sources/db_step.cpp" />
 		<Unit filename="sources/main.cpp" />
 		<Unit filename="sources/prediction_step.cpp" />
 		<Unit filename="sources/predictor_construction_step.cpp" />
+		<Unit filename="sources/script_python.cpp" />
 		<Unit filename="sources/svm.cpp" />
 		<Extensions>
 			<code_completion />

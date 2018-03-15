@@ -27,7 +27,6 @@ allConf db_filtering(const allConf& db,const std::string& filt){
 
 void save_and_plot_fan_predictors(const vectPred& pred_fan, const allConf& db_fan){
     /** SAVE THE PREDICTOR IN A TXT FILE  FROM VECTOR PRED_FAN**/
-    //using namespace std::chrono_literals;//enable to write 10ms or 1s
 
     /** Create directory for pred*.txt files **/
     std::string tmp_mkdir("mkdir " + CUR_DIR + "\\pred\\pred_fan");
