@@ -11,8 +11,8 @@ void launch_python_script(void){
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
     }
-    std::string cmd = "python "+CUR_DIR+"\\python-code\\src\\main.py";
-    std::cout << std::endl << "Launchin Python script !" << std::endl;
+    std::string cmd = "py "+CUR_DIR+"\\python-code\\src\\main.py";
+    std::cout << std::endl << "Launching Python script !" << std::endl;
     system(cmd.c_str());
 
 }
