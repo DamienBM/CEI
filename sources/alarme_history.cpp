@@ -136,7 +136,6 @@ void alarm_history_step(const machining_info& mcn_inf){ //Get Alarm History and 
     auto tDebut = std::chrono::high_resolution_clock::now();
 
     alarm_history_db alarm_db = get_alarm_history_db();
-    std::cout << "Done !" << std::endl;
 
     alarm_stats(alarm_db,mcn_inf);
 

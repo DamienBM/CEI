@@ -89,7 +89,7 @@ int ecriture(const info_sig& sig){
     if(fichier_out){
         fichier_out.precision(3);
         fichier_out << std::fixed;
-        fichier_out << "set title \"" << sig.signalName <<"\"\n" << "set xlabel \"Temps (msec)\"\n" << "set ylabel \"Amplitude\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000'" ;
+        fichier_out << "set title \"" << sig.signalName <<"\"\n" << "set xlabel \"Temps (sec)\"\n" << "set ylabel \"Amplitude\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000'" ;
 
         if(sig.signalName.find(std::string("Pos"))!=std::string::npos
            || sig.signalName.find(std::string("Servo"))!=std::string::npos
@@ -97,7 +97,7 @@ int ecriture(const info_sig& sig){
             fichier_out << " with lines";
 
         fichier_out << "\n";
-        for(double j = 0; j != sig.values.size(); ++j)
+        for(double j = 0; j != sig.values.size(); j += 0.5)
             fichier_out << j*sig.readCycle << " " << sig.values[j] << std::endl;
         fichier_out.close();
     }else{

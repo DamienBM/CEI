@@ -57,7 +57,7 @@ void save_and_plot_fan_predictors(const vectPred& pred_fan, const allConf& db_fa
         if(gnu_file){
             gnu_file.precision(3);
             gnu_file << std::fixed;
-            gnu_file << "set title \""<< db_fan[i].signalName <<"\"\n" << "set xlabel \"Temps (msec)\"\n" << "set ylabel \"Speed (tr/min)\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000','' using 1:2 title \"thresh\" with lines lc rgb '#0000ff'" << "\n";
+            gnu_file << "set title \""<< db_fan[i].signalName <<"\"\n" << "set xlabel \"Temps (sec)\"\n" << "set ylabel \"Speed (tr/min)\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000','' using 1:2 title \"thresh\" with lines lc rgb '#0000ff'" << "\n";
             double cpt = 0;
             std::for_each(std::begin(db_fan[i].values), std::end(db_fan[i].values), [&gnu_file,&cpt](const double val) {
                 gnu_file << cpt << " " << val << "\n";
@@ -285,13 +285,25 @@ machining_info dist_stats(const allConf& db){
     /** THEN CACLULATE DISTANCE PER MACHINING CYCLE **/
     double nb_points_per_cycle = (machine_info.To*MSEC)/db_pos[0].readCycle;
     std::vector<double> dist_per_cycle;
-    double dist;
+    double dist=0;
 
     for(auto& axe : all_axes_value){
         std::vector<double> axe_values = axe.second;
-        for(unsigned int i=1; i<=nb_points_per_cycle; ++i) dist += std::fabs(axe_values[i]-axe_values[i-1]);
-        machine_info.cycle_dist_vect.push_back(dist/1000.0);
-        dist = 0;
+        unsigned long NB_POINTS_TOTAL = (axe_values.size()/nb_points_per_cycle)*nb_points_per_cycle; // Rounded total number of points to a multiple of T0
+        double old_val=axe_values[0];
+        std::vector<double> dist_per_cycle_tmp;
+        for(unsigned int i=0; i<NB_POINTS_TOTAL/nb_points_per_cycle; ++i){
+            std::for_each(std::begin(axe_values)+(i*nb_points_per_cycle),std::begin(axe_values)+((i+1)*nb_points_per_cycle),[&dist,&old_val](const double val){
+                          dist += std::fabs(val-old_val);
+                          old_val = val;
+                          });
+            dist_per_cycle_tmp.push_back(dist/1000.0);
+            dist = 0;
+        }
+        double mean;
+        std::for_each(std::begin(dist_per_cycle_tmp),std::end(dist_per_cycle_tmp),[&mean](const double val){mean+=val;});
+        mean /= dist_per_cycle_tmp.size();
+        machine_info.cycle_dist_vect.push_back(mean);
     }
 
     return machine_info;
@@ -316,7 +328,7 @@ machining_info torque_motor_stats (const allConf& db){
                 file.precision(3);
                 file << std::fixed;
                 file << "set title \"Torque of : "<< sig.signalName <<"\"\n"
-                     << "set xlabel \"Time (msec)\"\n" << "set ylabel \"Torque (Nm)\"\n"
+                     << "set xlabel \"Time (sec)\"\n" << "set ylabel \"Torque (Nm)\"\n"
                      << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
             } else std::cout<< std::endl << "Something went wrong with Torque file ..." << std::endl;
             for(auto& val : sig.values){
@@ -340,7 +352,7 @@ machining_info torque_motor_stats (const allConf& db){
                 file.precision(3);
                 file << std::fixed;
                 file << "set title \"Output Power of : "<< sig.signalName <<"\"\n"
-                     << "set xlabel \"Time (msec)\"\n" << "set ylabel \"Output Power (kW)\"\n"
+                     << "set xlabel \"Time (sec)\"\n" << "set ylabel \"Output Power (kW)\"\n"
                      << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
             } else std::cout<< std::endl << "Something went wrong with Output Power file ..." << std::endl;
             for(auto& val : sig.values){
@@ -414,7 +426,7 @@ double get_periode(const all_dist& axes, const double& Te_servo){ //get periode 
              << "plot '-' using 1:2 title \"auto-corr\" lc rgb '#0000ff' with lines\n";
         } else
             std::cout << std::endl << "Something went wrong with data file ..." << std::endl;
-        for (unsigned long k = 0; k<(axe.size()/2); ++k){
+        for (unsigned long k = 0; k<(axe.size()/200); ++k){
             for(unsigned long i = k; i<axe.size();++i) val += ( (axe[i]-mean) * (axe[((i-k)/*%axe.size()*/)]-mean) );//auto-corrélation statistique pour un processus stationnaire
 
             if(k==0) val_max = val;
