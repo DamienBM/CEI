@@ -1,6 +1,6 @@
 #include <script_python.h>
 
-
+/** Main function of this file **/
 void launch_python_script(void){
 
     /** Create directory for pred*.txt files **/
@@ -13,6 +13,8 @@ void launch_python_script(void){
     }
     std::string cmd = "py "+CUR_DIR+"\\python-code\\src\\main.py";
     std::cout << std::endl << "Launching Python script !" << std::endl;
+
+    /** Start the python script **/
     system(cmd.c_str());
 
 }

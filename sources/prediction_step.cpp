@@ -1,8 +1,9 @@
 #include <prediction_step.h>
 
-/** PREDICTION STEP **/
+/** START OF FILE **/
 
-Predictors load_predictors(void){ /** READ TXT FILEs FROM ALL SAVED PREDICTORS **/
+/** Function to read and load the predictors from the text file of each predictor **/
+Predictors load_predictors(void){
 
     Predictors predictors;
     vectPred fan_pred;
@@ -10,13 +11,12 @@ Predictors load_predictors(void){ /** READ TXT FILEs FROM ALL SAVED PREDICTORS *
 
     std::string path(CUR_DIR+"\\pred\\");
 
-    /** LOAD FAN PRED **/
-
+    /** Load the fan predictors **/
     std::string file_pred(path + "\\pred_fan\\pred_fan.txt");
     std::ifstream pred_fan_file(file_pred,std::ios::in);
     if(pred_fan_file){
         std::string chaine;
-        std::getline(pred_fan_file,chaine);/** SKIP THE FIRST LINE **/
+        std::getline(pred_fan_file,chaine);/** Skip the first line because useless **/
         while(std::getline(pred_fan_file,chaine)){
             fan_tmp.sig_name = strtok((char*)chaine.c_str(),",");
             fan_tmp.mean = std::atof(strtok(NULL,","));
@@ -27,38 +27,29 @@ Predictors load_predictors(void){ /** READ TXT FILEs FROM ALL SAVED PREDICTORS *
     }else
         std::cout << std::endl << "Something went wrong during loading of fan predictor ! " << std::endl;
 
-    /** END LOAD FAN PRED **/
-
     return predictors;
 }
 
+/** Function to do the continuous prediction **/
 void predict(const allConf_active& active_db,const Predictors& predictors){
-
-
     for(auto& active_signal : active_db){
         /** FAN PREDICTION **/
         for(auto& pred_fan : predictors.fan_pred){
-            //pred_fan is a fan predictor from object predictors
             if(active_signal.signalName == pred_fan.sig_name)
             {
                 if(active_signal.value < (pred_fan.mean-3*pred_fan.std_dev))
-                    std::cout << std::endl << " Warning , signal : " << active_signal.signalName << " has a current value under the threshold !" << std::endl
+                    std::cout << std::endl << " Warning ! Signal : " << active_signal.signalName << " has a current value under the threshold !" << std::endl
                               << " At time : " << active_signal.time1 << ":" << active_signal.time2 << ":" << active_signal.time3 << std::endl;
                 break;
             }
         }
-        /** TEMPERATURE PREDICTION **/
-        //threshold ? Clustering ?
-        /** CLUSTERING PREDICTION **/
-        //Get predict from python txt file cluster via
     }
-
-
 }
 
+/** Function to store the active data base **/
 void get_active_db(void){
 
-    /** Construction requête Mongo DB **/
+    /** Construct the MongoDB request **/
     std::string active_db("\\ACTIVE_DB");
     std::string path = CUR_DIR + active_db + "\\Active_Signals.bat";
     std::ofstream fichier(path, std::ios::out|std::ios::trunc);
@@ -68,10 +59,11 @@ void get_active_db(void){
     }else
         std::cout << "Oops !" << std::endl;
 
-    /** Lancement de la requête **/
+    /** Start the request **/
     system(path.c_str());
 }
 
+/** Function to store the active data base **/
 allConf_active read_active_signals_file(void){
 
     allConf_active db_tmp;
@@ -106,7 +98,6 @@ allConf_active read_active_signals_file(void){
                 ptr = strtok(NULL,"{}$,:\"");
             }
             dummy.signalName = strtok(NULL,"{}$,:\"");
-            //ici ptr vaut le nom du signal dans L1Signal_Pool
 
             ptr = strtok(NULL,"{}$,:\"");
             while(strcmp(ptr,"value")!=0){
@@ -127,6 +118,7 @@ allConf_active read_active_signals_file(void){
     return db_tmp;
 }
 
+/** Function to write the active value of a signal in a text file **/
 int active_db_ecriture(const info_active_sig& sig){
 
     std::string path_out = CUR_DIR+"\\out_active\\";
@@ -146,19 +138,18 @@ int active_db_ecriture(const info_active_sig& sig){
     return 1;
 }
 
+/** Function to manage the writing thread (function above) **/
 void active_db_ecriture_thread(const allConf_active& active_db){
 
-    std::chrono::milliseconds span (5);
-    unsigned int n = std::thread::hardware_concurrency(); // n threads au max en même temps
+    std::chrono::milliseconds span (1); /** Check time : 1 millisecond **/
+    unsigned int n = std::thread::hardware_concurrency(); /** Get maximum number of threads **/
 
     std::vector<std::future<int>> tab_fut;
     std::future<int> fut;
     unsigned int j = 0;
 
-    for (j = 0; j<n && j<active_db.size();++j){
-        //init threads here
-        tab_fut.push_back(std::async(std::launch::async,active_db_ecriture,active_db[j]));
-    }
+    /** For loop to initialize the threads **/
+    for (j = 0; j<n && j<active_db.size(); ++j) tab_fut.push_back(std::async(std::launch::async,active_db_ecriture,active_db[j]));
 
     if(j==active_db.size()){
         for(unsigned int k = 0; k<n; ++k)
@@ -179,6 +170,7 @@ void active_db_ecriture_thread(const allConf_active& active_db){
     }
 }
 
+/** Function to create the active signal data base file directory **/
 void create_prediction_dir(void){
     std::string tmp_mkdir("mkdir ");
     std::string active_db_dir("\\ACTIVE_DB");
@@ -189,12 +181,15 @@ void create_prediction_dir(void){
     system(path_out.c_str());
 }
 
+/** Main function of this file **/
 void predictions_step(void){
 
-    create_prediction_dir(); /** CREATE ACTIVE DB DIR **/
+    /** Function to create active data base signal **/
+    create_prediction_dir();
     auto tDebut = std::chrono::high_resolution_clock::now();
 
-    get_active_db(); /** STORE ACTIVE DB **/
+    /** Function to store the active data base **/
+    get_active_db();
     allConf_active active_db = read_active_signals_file();
 
     auto tFin = std::chrono::high_resolution_clock::now();
@@ -202,16 +197,19 @@ void predictions_step(void){
     std::cout << std::endl << "Temps pour avoir active_db : " << duree.count() << " msec !" << std::endl;
     active_db_ecriture_thread(active_db);
 
+    /** Function to read and load the predictors from the text file of each predictor **/
     Predictors predictors = load_predictors();
-    PAUSE
-    using namespace std::chrono_literals;//enable to write 10ms or 1s
+    using namespace std::chrono_literals;
     while(true){
         std::cout << std::endl << "Loop done !" << std::endl;
+        /** Function to do the continuous prediction **/
         predict(active_db,predictors);
         std::this_thread::sleep_for(500ms);
+        /** Function to store the active data base **/
         get_active_db();
+        /** Function to read the active data base signals **/
         active_db = read_active_signals_file();
     }
 }
 
-/** END PREDICTION STEP **/
+/** END OF FILE **/

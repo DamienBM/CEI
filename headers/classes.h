@@ -2,6 +2,7 @@
 
 #include <librairie.h>
 
+/** Structure for summarize the information of a signal **/
 struct info_sig {
     std::string L0Name;
     std::string signalName;
@@ -13,6 +14,7 @@ struct info_sig {
 };
 typedef std::vector<info_sig> allConf;
 
+/** Structure for summarize the information of an alarm **/
 struct alarm_signal{
     std::string updatedate;
     std::string enddate;
@@ -22,6 +24,7 @@ struct alarm_signal{
 };
 typedef std::vector<alarm_signal> allAlarms;
 
+/** Structure for summarize the information of an active signal **/
 struct info_active_sig {
     std::string L1Name;
     std::string signalName;
@@ -33,6 +36,7 @@ struct info_active_sig {
 };
 typedef std::vector<info_active_sig> allConf_active;
 
+/** Structure for fan prediction **/
 struct stat_pred{
     std::string sig_name;
     double mean;
@@ -44,6 +48,8 @@ struct stat_pred{
 typedef std::vector<stat_pred> vectPred;
 
 typedef std::vector<int> histo;
+
+/** Structure for summarize the load signals **/
 struct load_stat{
     std::string sig_name;
     histo range;
@@ -51,6 +57,7 @@ struct load_stat{
 };
 typedef std::vector<load_stat> vectLoadStat;
 
+/** Structure for summarize all of the predictors **/
 struct Predictors{
     vectPred fan_pred;
 
@@ -64,6 +71,7 @@ typedef std::vector<double> nb_inv_vect;
 typedef std::vector<double> mean_torque_vect;
 typedef std::vector<double> mean_output_power_vect;
 
+/** Structure for summarize the machining cycle information**/
 struct machining_info{
     double To;
     dist_vect total_vect_dist;
@@ -78,6 +86,7 @@ struct machining_info{
         To(To),total_vect_dist(total_vect_dist),cycle_dist_vect(cycle_dist_vect),nb_inv_per_axe(nb_inv_per_axe),override_sig(override_sig),mean_torque(mean_torque),mean_output_power(mean_output_power){}
 };
 
+/** Structure for summarize all lines from the Alarm History file **/
 struct alarm_history{
 
     std::string L1Name;
@@ -97,13 +106,3 @@ struct alarm_history{
 
 };
 typedef std::vector<alarm_history> alarm_history_db;
-
-struct alarm_stats{
-
-    unsigned int number;
-    std::string message;
-    unsigned int cpt;
-
-
-
-};

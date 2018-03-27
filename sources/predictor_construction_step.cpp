@@ -1,13 +1,13 @@
 #include <predictor_construction_step.h>
 
-/** PREDICTORS CONSTRUCTION STEPS FUNCTIONS **/
+/** START OF FILE **/
 
+/** Function to filter the signals and get only useful ones **/
 allConf db_filtering(const allConf& db,const std::string& filt){
 
-    /** SPARSE DB WITH ALL FAN SIGNALS **/
     allConf db_filt;
 
-    for (unsigned int i=0; i<db.size(); ++i){
+    for (unsigned int i=0; i<db.size(); ++i){ /** Go through the data base in order to get the correct signals **/
         if(db[i].signalName.find(filt) != std::string::npos){
             unsigned long long cpt=0;
             for(unsigned long long j=0; j<db[i].values.size(); ++j){
@@ -15,18 +15,18 @@ allConf db_filtering(const allConf& db,const std::string& filt){
                     cpt++;
             }
 
-            if(cpt != db[i].values.size()) /** IF ALL VALUES ARE EQUAL TO 0 ... **/
+            if(cpt != db[i].values.size()) /** If all values aren't equal to 0 **/
                db_filt.push_back(db[i]);
 
-            cpt=0;
+            cpt=0; /** reset of cpt **/
         }
     }
 
     return  db_filt;
 }
 
+/** Function to save fan predictors in text file **/
 void save_and_plot_fan_predictors(const vectPred& pred_fan, const allConf& db_fan){
-    /** SAVE THE PREDICTOR IN A TXT FILE  FROM VECTOR PRED_FAN**/
 
     /** Create directory for pred*.txt files **/
     std::string tmp_mkdir("mkdir " + CUR_DIR + "\\pred\\pred_fan");
@@ -50,7 +50,7 @@ void save_and_plot_fan_predictors(const vectPred& pred_fan, const allConf& db_fa
     }else
         std::cout << "Something went wrong with prediction fan output txt file ..." << std::endl;
 
-    /** PLOT WITH GNUPLOT DATA AND PREDICTION THRESHOLD FOR EACH SIGNAL **/
+    /** Plot with gnuplot data and prediction threshold for each signal **/
     for(unsigned int i=0; i<db_fan.size(); ++i){
         filename = CUR_DIR+"\\pred\\pred_fan\\pred_fan_"+db_fan[i].signalName+".plt";
         std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
@@ -76,9 +76,8 @@ void save_and_plot_fan_predictors(const vectPred& pred_fan, const allConf& db_fa
     }
 }
 
+/** Function to save the load predictors in a text file **/
 void save_and_plot_load_pred (const vectLoadStat& load){
-
-    /** SAVE THE PREDICTOR IN A TXT FILE  FROM VECTOR PRED_FAN**/
 
     /** Create directory for pred*.txt files **/
     std::string tmp_mkdir("mkdir " + CUR_DIR + "\\pred\\pred_load");
@@ -92,17 +91,17 @@ void save_and_plot_load_pred (const vectLoadStat& load){
     std::string filename(CUR_DIR+"\\pred\\pred_load\\pred_load.txt");
     std::ofstream fichier(filename, std::ios::out|std::ios::trunc);
 
-    /** TXT FILE **/
+    /** text files **/
     if(fichier){
-            fichier.precision(3);
-            fichier << std::fixed;
+            fichier.precision(3); /** For clarity **/
+            fichier << std::fixed; /** For non scientific writing **/
             fichier << "Signal Name" << " , stacks of " << load[0].range.size()
                     << "\n";
 
     }else
         std::cout << "Something went wrong with prediction load output txt file ..." << std::endl;
 
-    /** PLOT FILES **/
+    /** Gnuplot files **/
     for(unsigned int i=0; i<load.size(); ++i){
 
         fichier << load[i].sig_name;
@@ -113,8 +112,8 @@ void save_and_plot_load_pred (const vectLoadStat& load){
         std::ofstream gnu_file(filename,std::ios::out|std::ios::trunc);
 
         if(gnu_file){
-            gnu_file.precision(3);
-            gnu_file << std::fixed;
+            gnu_file.precision(3); /** For clarity **/
+            gnu_file << std::fixed; /** For non scientific writing **/
             gnu_file << "set title \""<< load[i].sig_name <<"\"\n"
                      << "set xlabel \"Load (stack of "<< TAILLE_STACK <<")\"\n" << "set ylabel \"Number of times per range / Total number of times (%)\"\n"
                      << "plot '-' using 1:2 title \"data\" lc rgb '#0000ff' with lines\n";
@@ -133,14 +132,15 @@ void save_and_plot_load_pred (const vectLoadStat& load){
 
 }
 
-void fan_prediction(const allConf& db){ //to evolve in threads
+/** Function to calculate the mean and standard deviation for each fan signal **/
+void fan_prediction(const allConf& db){ //to evolve in thread
 
-    /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
+    /** First step : remove all useless signals **/
     const std::string fan = "Fan";
     allConf db_fan = db_filtering(std::cref(db),fan);
 
-    /** DB_FAN IS A VECTOR FILLED WITH USEFUL SIGNALS (WITH SOME ZEROS IN THEM ...) FROM FAN SPEED FROM HERE **/
-    /** MUST REMOVE ALL 0 INSIDE VALUES ... **/
+    /** db_fan is a vector filled with useful signals (with some zeros in it) **/
+    /** We must remove all zeros inside it **/
     allConf db_filtered;
     for(unsigned int i=0; i<db_fan.size(); ++i){
         info_sig dum(db_fan[i].L0Name,db_fan[i].signalName,db_fan[i].readCycle,db_fan[i].q);
@@ -151,7 +151,7 @@ void fan_prediction(const allConf& db){ //to evolve in threads
         db_filtered.push_back(dum);
     }
 
-    /** NEXT STEP IS TO CALCULATE MEAN AND STANDARD DEVIATION FOR EACH SIGNAL **/
+    /** next step is to calculate mean and standard deviation for each signal **/
     vectPred pred_fan;
 
     for(unsigned int i=0; i<db_filtered.size(); ++i){
@@ -173,7 +173,7 @@ void fan_prediction(const allConf& db){ //to evolve in threads
         else
             db_filtered[i].q = d_min;
 
-        /** Calculate mean and std_dev **/
+        /** Calculate mean and standard deviation **/
         double sum = std::accumulate(std::begin(db_filtered[i].values), std::end(db_filtered[i].values), 0.0);
         double mean =  sum / db_filtered[i].values.size();
         double accum = 0.0;
@@ -185,9 +185,10 @@ void fan_prediction(const allConf& db){ //to evolve in threads
     save_and_plot_fan_predictors(std::cref(pred_fan),std::cref(db_filtered));
 }
 
-void load_motor_stats(const allConf& db){ //to evolve in threads
+/** Function to calculate histogram of each load signal **/
+void load_motor_stats(const allConf& db){ //to evolve in thread
 
-    /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
+    /** First step : remove all useless signals **/
     const std::string load_str = "Load";
     allConf db_load = db_filtering(std::cref(db),load_str);
 
@@ -208,19 +209,20 @@ void load_motor_stats(const allConf& db){ //to evolve in threads
 
     }
 
-    /** HERE load IS FULLFILLED WITH USEFUL SIGNALS **/
-
+    /** From here, load is fulfilled with useful signals only **/
     save_and_plot_load_pred(load);
 }
 
+/** Function to get all information from motor speed **/
 machining_info speed_motor_stats(const allConf& db){
 
-    /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
+    /** First step : remove all useless signals **/
     const std::string speed_str = "ServoSpeed";
     allConf db_speed = db_filtering(std::cref(db),speed_str);
 
     machining_info machine_info;
 
+    /** Count all abrupt change of speed **/
     for(auto& sig : db_speed){
         double old_val = sig.values[0];
         unsigned int cpt=0;
@@ -228,6 +230,7 @@ machining_info speed_motor_stats(const allConf& db){
         machine_info.nb_inv_per_axe.push_back(cpt);
     }
 
+    /** Get information from the override signal **/
     const std::string over_str = "Override";
     allConf db_over = db_filtering(std::cref(db),over_str);
     histo dum;
@@ -240,6 +243,7 @@ machining_info speed_motor_stats(const allConf& db){
         machine_info.override_sig = dum;
     }
 
+    /** Save in a gnuplot file the histogram of the override signal **/
     std::string filename = CUR_DIR+"\\pred\\axes\\Override.plt";
     std::ofstream gnu_file_histo(filename,std::ios::out|std::ios::trunc);
     if(gnu_file_histo){
@@ -263,31 +267,32 @@ machining_info speed_motor_stats(const allConf& db){
     return machine_info;
 }
 
+/** Function to get all information from motor position **/
 machining_info dist_stats(const allConf& db){
 
     machining_info machine_info;
     all_dist all_axes_value;
     std::vector<double> dum;
 
-    /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
+    /** First step : remove all useless signals **/
     const std::string mcn = "McnPos";
     allConf db_pos = db_filtering(std::cref(db),mcn);
     for(auto& sig : db_pos) all_axes_value.push_back(std::pair(sig.signalName,sig.values));
 
-    /** FOR ALL AXES, CALCULATE THE TOTAL DIST AND THE CYCLE TIME**/
+    /** For all axes, calculate the total dist and the cycle time **/
 
-    /** AND CALCULATE THE CYCLE TIME **/
+    /** Function to calculate machining cycle with autocovariance **/
     machine_info.To = get_periode(std::cref(all_axes_value),db_pos[0].readCycle);
 
-    /** FIRST, CALCULATE THE TOTAL DISTANCE **/
+    /** Function to calculate the total distance for all axes **/
     machine_info.total_vect_dist = calculate_dist(std::cref(all_axes_value));
 
-    /** THEN CACLULATE DISTANCE PER MACHINING CYCLE **/
+    /** Part which calculate the distance for each axe per machining cycle **/
     double nb_points_per_cycle = (machine_info.To*MSEC)/db_pos[0].readCycle;
     std::vector<double> dist_per_cycle;
     double dist=0;
 
-    for(auto& axe : all_axes_value){
+    for(auto& axe : all_axes_value){ /** For loop for the calculation of the mean **/
         std::vector<double> axe_values = axe.second;
         unsigned long NB_POINTS_TOTAL = (axe_values.size()/nb_points_per_cycle)*nb_points_per_cycle; // Rounded total number of points to a multiple of T0
         double old_val=axe_values[0];
@@ -309,17 +314,19 @@ machining_info dist_stats(const allConf& db){
     return machine_info;
 }
 
+/** Function to get all information from motor torque or output power **/
 machining_info torque_motor_stats (const allConf& db){
 
-    /** FIRST STEP : REMOVE ALL USELESS SIGNALS **/
+    /** First step : remove all useless signals **/
     const std::string load_str = "Load";
     allConf db_torque = db_filtering(std::cref(db),load_str);
 
     std::vector<double> dum_mean_torque,dum_ouput_power;
 
-    for(auto& sig : db_torque){
+    for(auto& sig : db_torque){ /** For loop to get information from load signals **/
 
-        if(sig.signalName.find("Servo") != std::string::npos){ //servo : calcul à faire en rated torque
+        /** If it is a servo load **/
+        if(sig.signalName.find("Servo") != std::string::npos){
             double tmp=0;
             double cpt=0;
             std::string filename(CUR_DIR+"\\pred\\axes\\Torque_"+sig.signalName+".plt");
@@ -343,7 +350,7 @@ machining_info torque_motor_stats (const allConf& db){
             dum_mean_torque.push_back(tmp);
         }
 
-        else{ //spindle : calcul par rated output power
+        else{ /** If it is a spindle load **/
             double tmp=0;
             double cpt=0;
             std::string filename(CUR_DIR+"\\pred\\axes\\Output_Power_"+sig.signalName+".plt");
@@ -375,6 +382,7 @@ machining_info torque_motor_stats (const allConf& db){
     return mcn_info_tmp;
 }
 
+/** Function to calculate the total distance for all axes **/
 dist_vect calculate_dist(const all_dist& axes){
 
     dist_vect all_distance;
@@ -384,16 +392,18 @@ dist_vect calculate_dist(const all_dist& axes){
         double dist=0;
         double old_val=axe[0];
 
+        /** Calculate all distance for each signal below **/
         std::for_each(axe.begin()+1,axe.end(),[&dist,&old_val](const double val){ dist += std::fabs(val-old_val); old_val = val;});
 
-        all_distance.push_back(dist/1000.0);
+        all_distance.push_back(dist/1000.0); /** Normalize the total distance in mm **/
     }
     return all_distance;
 }
 
-double get_periode(const all_dist& axes, const double& Te_servo){ //get periode with mcnpos, servospeed and servoload
+/** Function to calculate machining cycle with autocovariance **/
+double get_periode(const all_dist& axes, const double& Te_servo){
 
-    /** CREATE FILE FOR PLOTTING **/
+    /** Create the directory for text and gnuplot files **/
     std::string tmp_mkdir("mkdir " + CUR_DIR + "\\pred\\axes");
     if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
@@ -407,7 +417,7 @@ double get_periode(const all_dist& axes, const double& Te_servo){ //get periode 
     unsigned num_axe=0;
     std::string filename;
 
-    /** AUTCO-CORRELATION **/
+    /** Autocovariance step **/
     for(auto& tmp : axes){
         std::vector<double> axe = tmp.second;
         filename = CUR_DIR+"\\pred\\axes\\auto_corr_"+ tmp.first +".plt";
@@ -416,18 +426,20 @@ double get_periode(const all_dist& axes, const double& Te_servo){ //get periode 
         double val=0;
         double val_max=0;
 
+        /** Calculate the mean of each signal **/
         double mean = 0;
         std::for_each(axe.begin(),axe.end(),[&mean](const double val){mean+=val;});
         mean /= axe.size();
 
         if(gnu_file){
             gnu_file << "set title \"Auto-correlation of "<< tmp.first <<"\"\n"
-             << "set xlabel \"Tau\"\n" << "set ylabel \"Amplitude\"\n"
+             << "set xlabel \"Tau (sec)\"\n" << "set ylabel \"Amplitude\"\n"
              << "plot '-' using 1:2 title \"auto-corr\" lc rgb '#0000ff' with lines\n";
         } else
             std::cout << std::endl << "Something went wrong with data file ..." << std::endl;
-        for (unsigned long k = 0; k<(axe.size()/200); ++k){
-            for(unsigned long i = k; i<axe.size();++i) val += ( (axe[i]-mean) * (axe[((i-k)/*%axe.size()*/)]-mean) );//auto-corrélation statistique pour un processus stationnaire
+        /** Autocovariance calculation part **/
+        for (unsigned long k = 0; k<(axe.size()/2); ++k){ /** Divide by two because the autocovariance is an even function **/
+            for(unsigned long i = k; i<axe.size();++i) val += ( (axe[i]-mean) * (axe[((i-k))]-mean) );//statistical autocovariance for a stationnary process
 
             if(k==0) val_max = val;
 
@@ -437,17 +449,17 @@ double get_periode(const all_dist& axes, const double& Te_servo){ //get periode 
                 res_tmp[k] = 0;
 
             if(k>=4){
-                if(res_tmp[k-2]>THRESH_AUTOCORRELATION){ //SEUIL A DEPASSER
+                if(res_tmp[k-2]>THRESH_AUTOCOVARIANCE){
                     if( ( (res_tmp[k-2] - res_tmp[k-4]) > 0 ) && ( (res_tmp[k-2] - res_tmp[k-3]) > 0 ) && ( (res_tmp[k-1] - res_tmp[k-2]) <= 0 ) && ( (res_tmp[k] - res_tmp[k-2]) <= 0 ) ){
                         T_cycle_usinage.push_back((k-2)*Te_servo/1000.0);
-                        if(gnu_file) gnu_file << k << " " << res_tmp[k] << "\n";
+                        if(gnu_file) gnu_file << 0.5*k << " " << res_tmp[k] << "\n";
                         else std::cout << std::endl << "Something went wrong with data file ..." << std::endl;
                         break;
                     }
                 }
             }
 
-            if(gnu_file) gnu_file << k << " " << res_tmp[k] << "\n";
+            if(gnu_file) gnu_file << 0.5*k << " " << res_tmp[k] << "\n";
             else         std::cout << std::endl << "Something went wrong with data file ..." << std::endl;
             val=0;
 		}
@@ -455,6 +467,7 @@ double get_periode(const all_dist& axes, const double& Te_servo){ //get periode 
 		gnu_file.close();
     }
 
+    /** Average the weak machining cycle predictors to have a better one **/
     double To;
     std::for_each(std::begin(T_cycle_usinage),std::end(T_cycle_usinage),[&To](const double val){To+=val;});
     To = To/(T_cycle_usinage.size());
@@ -462,14 +475,15 @@ double get_periode(const all_dist& axes, const double& Te_servo){ //get periode 
     return To;
 }
 
+/** Function to save in a text file the information calculate previously **/
 void save_axes_stats(const machining_info& mcn_info){
 
     std::string filename(CUR_DIR+"\\pred\\axes\\stats.txt");
     std::ofstream file(filename,std::ios::out|std::ios::trunc);
 
     if(file){
-        file.precision(3);
-        file << std::fixed;
+        file.precision(3); /** For clarity **/
+        file << std::fixed; /** For non scientific writing **/
         file << "T0 usinage " << mcn_info.To << "sec\n";
 
         unsigned int num_axe=0;
@@ -490,8 +504,10 @@ void save_axes_stats(const machining_info& mcn_info){
 
 }
 
-machining_info get_all_axes_info(const allConf& db){ /** Without Servo Viewer, only MTLINKi **/
+/** Function to gather all information in one step **/
+machining_info get_all_axes_info(const allConf& db){
 
+    /** Without Servo Viewer, only MTLINKi **/
     machining_info dum_dist  = dist_stats(std::cref(db));
 
     machining_info dum_speed = speed_motor_stats(std::cref(db));
@@ -506,12 +522,13 @@ machining_info get_all_axes_info(const allConf& db){ /** Without Servo Viewer, o
                            dum_torque.mean_torque,
                            dum_torque.mean_output_power);
 
-    /** AFTER ALL, SAVE AXES INFORMATION **/
+    /** After all, save all gathered information **/
     save_axes_stats(std::cref(mcn_inf));
 
     return mcn_inf;
 }
 
+/** Function to read CSV files **/
 std::vector<std::vector<double>> read_csv_files(std::vector<std::string> files, double& Te_servo){ /** Without MTLINKi, only Servo Viewer **/
 
     std::vector<std::vector<double>> X_Y;
@@ -546,6 +563,7 @@ std::vector<std::vector<double>> read_csv_files(std::vector<std::string> files, 
     return X_Y;
 }
 
+/** Function to get the CSV files **/
 std::vector<std::string> get_csv_files(void){ /** Without MTLINKi, only Servo Viewer **/
 
     boost::filesystem::path target(CUR_DIR+"\\CSV");
@@ -556,19 +574,20 @@ std::vector<std::string> get_csv_files(void){ /** Without MTLINKi, only Servo Vi
     return test;
 }
 
-machining_info make_predictor_steps(const allConf& db){ /** Out a predictor object in a file : /pred/predfan,... **/
+/** Main function of this file **/
+machining_info make_predictor_steps(const allConf& db){
 
     std::cout << std::endl << "Pred step" << std::endl;
 
     auto tDebut = std::chrono::high_resolution_clock::now();
 
-    /** Step 1 (Thread 1) : Fan speed stuff**/
-    std::thread th_fan(fan_prediction,std::cref(db)); /** std::ref car besoin d'une référence pour fan_prediction**/
+    /** Step 1 (Thread 1) : Fan speed stuff **/
+    std::thread th_fan(fan_prediction,std::cref(db));
 
     /** STEP 2 (Thread 2) : Temp Motor **/
     std::thread th_load(load_motor_stats,std::cref(db));
 
-    /** STEP 3 (Thread 3) : Axes total dist and Machining cycle**/
+    /** STEP 3 (Thread 3) : total dist axes and Machining cycle**/
     std::packaged_task<machining_info()> th_dist_axes(std::bind(get_all_axes_info,std::cref(db)));
     std::future<machining_info> res = th_dist_axes.get_future();
     std::thread(std::move(th_dist_axes)).detach(); //detach the thread so it's no longer useful to join() it. Only get() is useful here
@@ -585,15 +604,15 @@ machining_info make_predictor_steps(const allConf& db){ /** Out a predictor obje
     std::chrono::duration<double, std::milli> duree = tFin - tDebut;
 
     std::cout << std::endl << "Temps d'execution des etapes de prediction : " << duree.count() << std::endl;
-    tDebut = std::chrono::high_resolution_clock::now();
 
     std::cout.precision(3);
     std::cout << std::fixed;
     std::cout << "distance sur X : " << mcn_info.total_vect_dist[0] << " m et sur Y : " << mcn_info.total_vect_dist[1] << " m" << std::endl;
     std::cout << std::endl << "T_cycle_usinage = " << mcn_info.To << " sec." << std::endl;
 
-    /** CSV FILES PART **/
-    /*double Te_servo=0;
+    /** CSV file part **/
+    /*tDebut = std::chrono::high_resolution_clock::now();
+    double Te_servo=0;
     csv_filename csv_files = get_csv_files();
     all_dist axes = read_csv_files(csv_files,Te_servo);
     total_dist_vect dist_axes = calculate_dist(std::cref(axes));
@@ -605,14 +624,14 @@ machining_info make_predictor_steps(const allConf& db){ /** Out a predictor obje
     std::cout << std::fixed;
     std::cout << "distance sur X : " << dist_axes[0] << " m et sur Y : " << dist_axes[1] << " m" << std::endl;
 
-    std::cout << std::endl << "T_cycle_usinage = " << periode_usinage << " sec." << std::endl;*/
+    std::cout << std::endl << "T_cycle_usinage = " << periode_usinage << " sec." << std::endl;
 
     tFin = std::chrono::high_resolution_clock::now();
     duree = tFin - tDebut;
 
-    std::cout << std::endl << "Temps d'execution des etapes de CSV : " << duree.count() << std::endl;
+    std::cout << std::endl << "Execution time of CSV steps : " << duree.count() << " msec" << std::endl;*/
 
     return mcn_info;
 }
 
-/** END PREDICTORS CONSTRUCTION STEPS FUNCTIONS **/
+/** END OF FILE **/

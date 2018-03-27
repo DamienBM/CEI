@@ -2,6 +2,7 @@
 
 /** START OF FILE **/
 
+/** Sparse the Alarm History file **/
 alarm_history_db get_alarm_history_db(void){
 
     alarm_history_db alarm_db;
@@ -13,7 +14,7 @@ alarm_history_db get_alarm_history_db(void){
     if(file){
         std::string chaine;
 
-        while(std::getline(file,chaine)){
+        while(std::getline(file,chaine)){/** Sparse operation line by line below here **/
             char *ptr = strtok((char*)chaine.c_str(),"{}$,:\"");
             while(strcmp(ptr,"L1Name")!=0) ptr = strtok(NULL,"{}$,:\"");
             ptr = strtok(NULL,"{}$,:\"");
@@ -66,13 +67,14 @@ alarm_history_db get_alarm_history_db(void){
     return alarm_db;
 }
 
+/** Summarize alarms **/
 void alarm_stats(const alarm_history_db& alarm_db,const machining_info& mcn_info){
 
     alarm_history_db alarmStats;
 
-    for (auto& alarm : alarm_db){
+    for (auto& alarm : alarm_db){/** Go through all alarms read by the function above **/
 
-        if(alarmStats.size() == 0) alarmStats.push_back(alarm);
+        if(alarmStats.size() == 0) alarmStats.push_back(alarm); /** In order to initialize the vector otherwise there is a problem **/
 
         else{
             unsigned int cpt=0;
@@ -86,14 +88,15 @@ void alarm_stats(const alarm_history_db& alarm_db,const machining_info& mcn_info
                 else cpt++;
 
             }
-            if(cpt == alarmStats.size()) alarmStats.push_back(alarm);
+            if(cpt == alarmStats.size()) alarmStats.push_back(alarm); /** Add the alarm in the summary if not present **/
         }
     }
 
-    if(alarmStats.size()!=0) save_stats(alarmStats,mcn_info.To);
+    if(alarmStats.size()!=0) save_stats(alarmStats,mcn_info.To); /** Test to save a non-null vector **/
 
 }
 
+/** Save the summarized vector in a text file **/
 void save_stats(const alarm_history_db& alarmStats,const double& To){
 
     /** CREATE FILE FOR SAVING STATS **/
@@ -110,10 +113,10 @@ void save_stats(const alarm_history_db& alarmStats,const double& To){
 
     if(file){
 
-        file.precision(3);
-        file << std::fixed;
+        file.precision(3); /** For clarity **/
+        file << std::fixed; /** For non scientific writing **/
 
-        for(auto& alrm : alarmStats){
+        for(auto& alrm : alarmStats){ /** Read vector element by element **/
             file << "Machine " << alrm.L0Name << " of Equipment " << alrm.L1Name
                  << " has ";
             if(alrm.level == 1) file << "an Alarm";
@@ -127,11 +130,10 @@ void save_stats(const alarm_history_db& alarmStats,const double& To){
         }
     file.close();
     }else   std::cout << std::endl << "Something went wrong when saving the alarm stats ..." << std::endl;
-
-
 }
 
-void alarm_history_step(const machining_info& mcn_inf){ //Get Alarm History and do some stats
+/** Main function of this file **/
+void alarm_history_step(const machining_info& mcn_inf){
 
     auto tDebut = std::chrono::high_resolution_clock::now();
 
@@ -142,8 +144,7 @@ void alarm_history_step(const machining_info& mcn_inf){ //Get Alarm History and 
     auto tFin = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> duree = tFin - tDebut;
 
-    std::cout << std::endl << "Alarm stats done in " << duree.count() << " seconds !" << std::endl;
-
+    std::cout << std::endl << "Time to do the alarm stats " << duree.count() << " msec" << std::endl;
 }
 
 /** END OF FILE **/

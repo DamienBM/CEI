@@ -1,13 +1,13 @@
 #include <db_step.h>
 
-/** GET DB STEP FUNCTIONS **/
+/** START OF FILE **/
 
+/** Function to sparse Signal History file and fill vectors **/
 void sparse_db(std::ifstream& fichier, allConf& db,allAlarms& alarms){
-    /** Sparse DB and fill vector from db **/
     std::string chaine;
     double timespan_msec = 0;
 
-    while(std::getline(fichier,chaine)){
+    while(std::getline(fichier,chaine)){ /** Read line by line the file and fill vector with information from the file **/
 
         char *ptr = strtok((char*)chaine.c_str(),"{}$,:\"");
 
@@ -47,13 +47,11 @@ void sparse_db(std::ifstream& fichier, allConf& db,allAlarms& alarms){
                 while(strcmp(ptr,"signalname")!=0)ptr = strtok(NULL,"{}$,:\"");
 
                 ptr = strtok(NULL,"{}$,:\"");
-                //ici ptr vaut le nom du signal dans L1Signal_Pool
 
                 for(auto it = db.begin(); it != db.end();++it){
                     if(strcmp(ptr,it->signalName.c_str())==0){
                         ptr = strtok(NULL,"{}$,:\"");
                         ptr = strtok(NULL,"{}$,:\"");
-                        //ici ptr vaut la valeur du signal
                         for(unsigned long nb_pts = 0; nb_pts < (timespan_msec/(it->readCycle));++nb_pts)
                             it->values.push_back(std::atof(ptr));
                         break;
@@ -63,21 +61,23 @@ void sparse_db(std::ifstream& fichier, allConf& db,allAlarms& alarms){
 
             }
 
-            ptr = NULL;
+            ptr = NULL; /** In order to be faster by not going at the end of the file **/
         }
     }
 }
 
+/** Function to delete all unnecessary files **/
 void delete_stuff(void){
-    /** Suppresion des fichiers de 0Ko **/
+    /** Deletion of 0kO files **/
     std::string del_cmd = "for /r " + CUR_DIR + "\\out %i in (*.txt) do if %~zi == 0 del %i";
     system(del_cmd.c_str());
 
-    /** Suppression du dossier db (éviter de fuiter l'accès aux données) **/
+    /** Deletion of the DB file **/
     std::string tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\DB";
     system(tmp_rmdir.c_str());
 }
 
+/** Function to write each signal in a text file **/
 int ecriture(const info_sig& sig){
 
     std::string path_out = CUR_DIR+"\\out\\";
@@ -86,9 +86,9 @@ int ecriture(const info_sig& sig){
     file_out = path_out + sig.signalName + "_TimeCycle_" + std::to_string(sig.readCycle) + ".plt";
     std::ofstream fichier_out(file_out, std::ios::out|std::ios::trunc);
 
-    if(fichier_out){
-        fichier_out.precision(3);
-        fichier_out << std::fixed;
+    if(fichier_out){/** If the file is correctly opened **/
+        fichier_out.precision(3);/** For clarity **/
+        fichier_out << std::fixed;/** For non-scientific expression **/
         fichier_out << "set title \"" << sig.signalName <<"\"\n" << "set xlabel \"Temps (sec)\"\n" << "set ylabel \"Amplitude\"\n" << "plot '-' using 1:2 title \"data\" lc rgb '#ff0000'" ;
 
         if(sig.signalName.find(std::string("Pos"))!=std::string::npos
@@ -97,7 +97,7 @@ int ecriture(const info_sig& sig){
             fichier_out << " with lines";
 
         fichier_out << "\n";
-        for(double j = 0; j != sig.values.size(); j += 0.5)
+        for(double j = 0; j != sig.values.size(); j += 0.5) /** Fill the text file with an increment step of 0.5 because all signals are sampled at 500MSEC **/
             fichier_out << j*sig.readCycle << " " << sig.values[j] << std::endl;
         fichier_out.close();
     }else{
@@ -108,23 +108,21 @@ int ecriture(const info_sig& sig){
     return 1;
 }
 
+/** Function to manage the writing thread (function above) **/
 void ecriture_thread(const allConf& db,const allAlarms& alarms){
 
-    std::chrono::milliseconds span(1);
-    unsigned int nb_thread_max = std::thread::hardware_concurrency(); // nb threads max en même temps
+    std::chrono::milliseconds span(1); /** Check time : 1 millisecond **/
+    unsigned int nb_thread_max = std::thread::hardware_concurrency(); /** Get maximum number of threads **/
 
     std::vector<std::future<int>> tab_fut;
     std::future<int> fut;
     unsigned int j = 0;
 
-    for (j = 0; j<nb_thread_max && j<db.size();++j){
-        //init threads here
-        tab_fut.push_back(std::async(std::launch::async,ecriture,std::cref(db[j])));
-    }
+    /** For loop to initialize the threads **/
+    for (j = 0; j<nb_thread_max && j<db.size();++j) tab_fut.push_back(std::async(std::launch::async,ecriture,std::cref(db[j])));
 
     if(j==db.size()){
-        for(unsigned int k = 0; k<tab_fut.size(); ++k)
-            tab_fut[k].wait();
+        for(unsigned int k = 0; k<tab_fut.size(); ++k) tab_fut[k].wait();
     }
     else{
         std::cout << "Ecriture fichier dans /out sur " << tab_fut.size() <<  " threads." << std::endl;
@@ -139,6 +137,8 @@ void ecriture_thread(const allConf& db,const allAlarms& alarms){
         }
     }
 
+
+    /** Special part for the alarm file **/
     std::string filename = CUR_DIR+"\\out\\Alarms.txt";
     std::ofstream file(filename,std::ios::out|std::ios::trunc);
 
@@ -151,22 +151,23 @@ void ecriture_thread(const allConf& db,const allAlarms& alarms){
     else     std::cout << std::endl << "Something went wrong with Alarm file ..." << std::endl;
 }
 
+/** Function to create initialize the data base **/
 allConf create_DB(void){
     allConf db;
 
     std::string tmp_mkdir("");
     tmp_mkdir = "mkdir " + CUR_DIR + "\\DB";
 
-    /** Créer le repertoire pour stocker la BDD **/
-    /*if( system(tmp_mkdir.c_str()) ){
+    /** Create the directory to store the data base **/
+    if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
         tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\DB";
         system(tmp_rmdir.c_str());
         system(tmp_mkdir.c_str());
-    }*/
+    }
 
     tmp_mkdir = "mkdir " + CUR_DIR + "\\batch";
-    /** Créer le repertoire pour les fichiers bat **/
+    /** Create the directory to store the bat files **/
     if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
         tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\batch";
@@ -175,7 +176,7 @@ allConf create_DB(void){
     }
 
     tmp_mkdir = "mkdir " + CUR_DIR + "\\out";
-    /** Créer le repertoire pour les fichiers out **/
+    /** Create the directory to store the out files **/
     if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
         tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\out";
@@ -183,7 +184,7 @@ allConf create_DB(void){
         system(tmp_mkdir.c_str());
     }
 
-    /** Create directory for pred files **/
+    /** Create the directory to store the pred files **/
     tmp_mkdir = "mkdir " + CUR_DIR + "\\pred";
     if( system(tmp_mkdir.c_str()) ){
         std::string tmp_rmdir("");
@@ -192,7 +193,7 @@ allConf create_DB(void){
         system(tmp_mkdir.c_str());
     }
 
-    /** Construction requete MongoDB **/
+    /** Create the MongoDB request **/
     std::string path = CUR_DIR + "\\batch\\Signal.bat";
     std::ofstream fichier(path, std::ios::out|std::ios::trunc);
     if(fichier){
@@ -201,20 +202,19 @@ allConf create_DB(void){
     }else
         std::cout << "Oops !" << std::endl;
 
-    /** Lancement de la requête **/
+    /** Start the request **/
     system(path.c_str());
 
-    /** Suppression du dossier batch (éviter de fuiter l'accès aux données) **/
+    /** Deletion of the batch directory (for sake of clarity) **/
     std::string tmp_rmdir("");
     tmp_rmdir = "rmdir /s /q " + CUR_DIR + "\\batch";
     system(tmp_rmdir.c_str());
 
-    /** Récupération des infos dans L0Setting **/
+    /** Get information from L0Setting file **/
     std::ifstream L0_Setting("C:\\FANUC\\MT-LINKi\\MT-LINKiCollector\\Setting\\L0_Setting.json",std::ios::in);
     std::string chaine;
 
     if(L0_Setting){
-        //std::cout << "Fichier ouvert !" << std::endl;
         info_sig dummy;
         std::string sig_name;
         while(std::getline(L0_Setting,chaine)){
@@ -223,13 +223,11 @@ allConf create_DB(void){
             while(ptr != NULL){
                 if(strcmp(ptr,"L0Name") == 0){
                     ptr = strtok(NULL,"{}$,:\"");
-                    //ptr vaut le nom de L0Name
                     dummy.L0Name = ptr;
                 }
 
                 else if(strcmp(ptr,"SignalName") == 0){
                     ptr = strtok(NULL,"{}$,:\"");
-                    //ptr vaut le nom du signal
                     dummy.signalName = ptr;
                     dummy.signalName+="_"+dummy.L0Name;
 
@@ -237,7 +235,6 @@ allConf create_DB(void){
 
                 else if(strcmp(ptr,"ReadCycle") == 0) {
                     ptr = strtok(NULL,"{}$,:\"");
-                    //ptr vaut le temps d'échantillonage
                     dummy.readCycle = atoi(ptr);
                     db.push_back(dummy);
                 }
@@ -254,17 +251,18 @@ allConf create_DB(void){
     return db;
 }
 
+/** Main function of this file **/
 allConf first_steps(void){
 
     auto tDebut_all = std::chrono::high_resolution_clock::now();
     auto tDebut = std::chrono::high_resolution_clock::now();
 
-    /** CREATE DIR & REQ MONGODB & FILL THE L0NAME OF ALL SIG IN db **/
+    /** Function to create initialize the data base **/
     allConf db = create_DB();
 
     auto tFin = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> duree = tFin - tDebut;
-    std::cout << std::endl << "Temps lecture base de donnees : " << duree.count() << std::endl;
+    std::cout << std::endl << "Time to read the data base : " << duree.count() << " msec" << std::endl;
     tDebut = std::chrono::high_resolution_clock::now();
 
     std::string file_in = CUR_DIR + "\\DB\\mtlinki_Signal.txt";
@@ -274,40 +272,40 @@ allConf first_steps(void){
 
     if (fichier)
     {
-        /** Sparse db and fill vector from db **/
+        /** Function to sparse Signal History file and fill vectors **/
         allAlarms alarms;
         sparse_db(fichier,db,alarms);
 
-        fichier.close(); // On ferme le fichier
+        fichier.close();
 
         tFin = std::chrono::high_resolution_clock::now();
         duree = tFin - tDebut;
-        std::cout << std::endl << "Temps pour lire la base depuis fichier txt : " << duree.count() << std::endl;
+        std::cout << std::endl << "Time to read the data base from the text file : " << duree.count() << " msec" << std::endl;
 
         tDebut = std::chrono::high_resolution_clock::now();
 
-        /** Write files in /out directory **/
+        /** Function to manage the writing thread **/
         ecriture_thread(std::cref(db),std::cref(alarms));
 
         tFin = std::chrono::high_resolution_clock::now();
         duree = tFin - tDebut;
-        std::cout << std::endl << "Temps ecriture fichiers out : " << duree.count() << std::endl;
+        std::cout << std::endl << "Time to write the out files : " << duree.count() << " msec" << std::endl;
         tDebut = std::chrono::high_resolution_clock::now();
 
     }else
-        std::cout << "Impossible d'ouvrir le fichier : mtlinki_Signal.txt" << std::endl;
+        std::cout << "Can't open the file : mtlinki_Signal.txt" << std::endl;
 
-    /** Delete DB directory and 0 Ko files in OUT directory **/
-    //delete_stuff();
+    /** Function to delete all unnecessary files **/
+    delete_stuff();
 
     std::cout << std::endl << "First steps completed !" << std::endl;
 
     auto tFin_all = std::chrono::high_resolution_clock::now();
     duree = tFin_all - tDebut_all;
 
-    std::cout << std::endl << "Temps d'execution des premieres etapes : " << duree.count() << std::endl;
+    std::cout << std::endl << "Time of first steps : " << duree.count() << " msec" << std::endl;
 
     return db;
 }
 
-/** END GET DB STEP FUNCTIONS **/
+/** END OF FILE **/
